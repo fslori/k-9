@@ -272,6 +272,10 @@ public class MessageLoaderHelper {
                 throw new IllegalStateException("loader id must be message loader id");
             }
 
+            if (message == localMessage) {
+                return;
+            }
+
             localMessage = message;
             if (message == null) {
                 onLoadMessageFromDatabaseFailed();
@@ -408,6 +412,8 @@ public class MessageLoaderHelper {
     }
 
     private LoaderCallbacks<MessageViewInfo> decodeMessageLoaderCallback = new LoaderCallbacks<MessageViewInfo>() {
+        private MessageViewInfo messageViewInfo;
+
         @Override
         public Loader<MessageViewInfo> onCreateLoader(int id, Bundle args) {
             if (id != DECODE_MESSAGE_LOADER_ID) {
@@ -422,6 +428,12 @@ public class MessageLoaderHelper {
             if (loader.getId() != DECODE_MESSAGE_LOADER_ID) {
                 throw new IllegalStateException("loader id must be message decoder id");
             }
+
+            if (messageViewInfo == this.messageViewInfo) {
+                return;
+            }
+
+            this.messageViewInfo = messageViewInfo;
             onDecodeMessageFinished(messageViewInfo);
         }
 
@@ -430,7 +442,8 @@ public class MessageLoaderHelper {
             if (loader.getId() != DECODE_MESSAGE_LOADER_ID) {
                 throw new IllegalStateException("loader id must be message decoder id");
             }
-            // Do nothing
+
+            messageViewInfo = null;
         }
     };
 
@@ -440,10 +453,10 @@ public class MessageLoaderHelper {
     private void startDownloadingMessageBody(boolean downloadComplete) {
         if (downloadComplete) {
             MessagingController.getInstance(context).loadMessageRemote(
-                    account, messageReference.getFolderServerId(), messageReference.getUid(), downloadMessageListener);
+                    account, messageReference.getFolderId(), messageReference.getUid(), downloadMessageListener);
         } else {
             MessagingController.getInstance(context).loadMessageRemotePartial(
-                    account, messageReference.getFolderServerId(), messageReference.getUid(), downloadMessageListener);
+                    account, messageReference.getFolderId(), messageReference.getUid(), downloadMessageListener);
         }
     }
 
@@ -473,20 +486,17 @@ public class MessageLoaderHelper {
 
     MessagingListener downloadMessageListener = new SimpleMessagingListener() {
         @Override
-        public void loadMessageRemoteFinished(final Account account, final String folderServerId, final String uid) {
-            handler.post(new Runnable() {
-                @Override
-                public void run() {
-                    if (!messageReference.equals(account.getUuid(), folderServerId, uid)) {
-                        return;
-                    }
-                    onMessageDownloadFinished();
+        public void loadMessageRemoteFinished(final Account account, final long folderId, final String uid) {
+            handler.post(() -> {
+                if (!messageReference.equals(account.getUuid(), folderId, uid)) {
+                    return;
                 }
+                onMessageDownloadFinished();
             });
         }
 
         @Override
-        public void loadMessageRemoteFailed(Account account, String folderServerId, String uid, final Throwable t) {
+        public void loadMessageRemoteFailed(Account account, long folderId, String uid, final Throwable t) {
             handler.post(new Runnable() {
                 @Override
                 public void run() {

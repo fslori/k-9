@@ -14,7 +14,7 @@ class ThemeManager(private val context: Context) {
         get() = when (K9.appTheme) {
             AppTheme.LIGHT -> Theme.LIGHT
             AppTheme.DARK -> Theme.DARK
-            AppTheme.FOLLOW_SYSTEM -> getSystemTheme()
+            AppTheme.FOLLOW_SYSTEM -> if (Build.VERSION.SDK_INT < 28) Theme.LIGHT else getSystemTheme()
         }
 
     val messageViewTheme: Theme
@@ -42,7 +42,6 @@ class ThemeManager(private val context: Context) {
 
     @get:StyleRes
     val translucentDialogThemeResourceId: Int = R.style.Theme_K9_Dialog_Translucent_DayNight
-
 
     fun init() {
         updateAppTheme()
@@ -89,7 +88,7 @@ class ThemeManager(private val context: Context) {
         return when (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) {
             Configuration.UI_MODE_NIGHT_NO -> Theme.LIGHT
             Configuration.UI_MODE_NIGHT_YES -> Theme.DARK
-            else ->  Theme.LIGHT
+            else -> Theme.LIGHT
         }
     }
 }

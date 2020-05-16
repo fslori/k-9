@@ -58,13 +58,14 @@
         <attr name="iconPreferencesFetchMail" format="reference" />
         <attr name="iconPreferencesSearch" format="reference" />
         <attr name="iconPreferencesReadMail" format="reference" />
-        <attr name="iconPreferencesStorage" format="reference" />
         <attr name="iconPreferencesCompose" format="reference" />
         <attr name="iconSettingsAbout" format="reference" />
         <attr name="iconSettingsGeneral" format="reference" />
         <attr name="iconSettingsAccount" format="reference" />
         <attr name="iconSettingsAccountAdd" format="reference" />
         <attr name="iconSettingsExport" format="reference" />
+        <attr name="iconSettingsImport" format="reference" />
+        <attr name="iconSettingsImportStatus" format="reference" />
         <attr name="textColorPrimaryRecipientDropdown" format="reference" />
         <attr name="textColorSecondaryRecipientDropdown" format="reference" />
         <attr name="backgroundColorChooseAccountHeader" format="color" />
@@ -85,6 +86,7 @@
         <attr name="messageViewBackgroundColor" format="reference|color"/>
         <attr name="messageViewAttachmentBackground" format="reference"/>
         <attr name="messageComposeAddContactImage" format="reference"/>
+        <attr name="attachmentCardBackground" format="reference|color"/>
         <attr name="composerBackgroundColor" format="color"/>
         <attr name="contactPictureFallbackDefaultBackgroundColor" format="reference|color"/>
         <attr name="contactTokenBackgroundColor" format="reference|color"/>
@@ -95,6 +97,7 @@
         <attr name="iconAboutAuthors" format="reference"/>
         <attr name="iconAboutLicense" format="reference"/>
 
+        <attr name="unencryptedAttachmentUnlock" format="reference|color" />
         <attr name="openpgp_black" format="reference|color" />
         <attr name="openpgp_orange" format="reference|color" />
         <attr name="openpgp_red" format="reference|color" />
@@ -104,10 +107,6 @@
         <attr name="openpgp_dark_grey" format="reference|color" />
     </declare-styleable>
 
-    <declare-styleable name="SliderPreference">
-        <attr name="android:summary" />
-    </declare-styleable>
-    
     <declare-styleable name="FoldableLinearLayout">
         <attr name="foldedLabel" format="string" />
         <attr name="unFoldedLabel" format="string" />
@@ -127,6 +126,10 @@
     <declare-styleable name="AutocryptPreferEncryptPreference">
         <attr name="summaryOn" format="string" />
         <attr name="summaryOff" format="string" />
+    </declare-styleable>
+
+    <declare-styleable name="SimpleHighlightView">
+        <attr name="highlightBackgroundColor" format="color|reference" />
     </declare-styleable>
 
 </resources>

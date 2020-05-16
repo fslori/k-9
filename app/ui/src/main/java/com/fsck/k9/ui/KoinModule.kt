@@ -1,17 +1,16 @@
 package com.fsck.k9.ui
 
-import com.fsck.k9.ui.folders.FolderNameFormatter
-import com.fsck.k9.ui.folders.FoldersLiveDataFactory
+import android.content.Context
 import com.fsck.k9.ui.helper.DisplayHtmlUiFactory
 import com.fsck.k9.ui.helper.HtmlSettingsProvider
 import com.fsck.k9.ui.helper.HtmlToSpanned
-import org.koin.dsl.module.applicationContext
+import com.fsck.k9.ui.helper.SizeFormatter
+import org.koin.dsl.module
 
-val uiModule = applicationContext {
-    bean { FolderNameFormatter(get()) }
-    bean { HtmlToSpanned() }
-    bean { ThemeManager(get()) }
-    bean { HtmlSettingsProvider(get()) }
-    bean { DisplayHtmlUiFactory(get()) }
-    bean { FoldersLiveDataFactory(get(), get()) }
+val uiModule = module {
+    single { HtmlToSpanned() }
+    single { ThemeManager(get()) }
+    single { HtmlSettingsProvider(get()) }
+    single { DisplayHtmlUiFactory(get()) }
+    factory { (context: Context) -> SizeFormatter(context.resources) }
 }

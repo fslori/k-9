@@ -1,9 +1,7 @@
 apply plugin: 'com.android.application'
 apply plugin: 'org.jetbrains.kotlin.android'
 apply plugin: 'org.jetbrains.kotlin.android.extensions'
-
-apply from: "${rootProject.projectDir}/gradle/plugins/checkstyle-android.gradle"
-apply from: "${rootProject.projectDir}/gradle/plugins/findbugs-android.gradle"
+apply plugin: 'org.jlleitschuh.gradle.ktlint'
 
 if (rootProject.testCoverage) {
     apply plugin: 'jacoco'
@@ -21,17 +19,18 @@ dependencies {
     implementation project(":backend:webdav")
 
     implementation "androidx.appcompat:appcompat:${versions.androidxAppCompat}"
+    implementation "androidx.core:core-ktx:${versions.coreKtx}"
+    implementation "com.takisoft.preferencex:preferencex:${versions.preferencesFix}"
     implementation "com.jakewharton.timber:timber:${versions.timber}"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:${versions.kotlinCoroutines}"
 
     testImplementation "org.robolectric:robolectric:${versions.robolectric}"
     testImplementation "junit:junit:${versions.junit}"
     testImplementation "com.google.truth:truth:${versions.truth}"
     testImplementation "org.mockito:mockito-core:${versions.mockito}"
-    testImplementation "com.nhaarman:mockito-kotlin:${versions.mockitoKotlin}"
+    testImplementation "com.nhaarman.mockitokotlin2:mockito-kotlin:${versions.mockitoKotlin}"
     testImplementation "org.jdom:jdom2:2.0.6"
     testImplementation "org.koin:koin-test:${versions.koin}"
-
-    androidTestImplementation "androidx.test.espresso:espresso-core:3.1.1"
 }
 
 android {
@@ -42,13 +41,13 @@ android {
         applicationId "com.fsck.k9"
         testApplicationId "com.fsck.k9.tests"
 
-        versionCode 27000
-        versionName '5.700-SNAPSHOT'
+        versionCode 27014
+        versionName '5.715-SNAPSHOT'
 
         minSdkVersion buildConfig.minSdk
-        targetSdkVersion 23
+        targetSdkVersion buildConfig.targetSdk
 
-        generatedDensities = ['mdpi', 'hdpi', 'xhdpi']
+        vectorDrawables.useSupportLibrary = true
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -98,8 +97,12 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_7
-        targetCompatibility JavaVersion.VERSION_1_7
+        sourceCompatibility javaVersion
+        targetCompatibility javaVersion
+    }
+
+    kotlinOptions {
+        jvmTarget = kotlinJvmVersion
     }
 
     testOptions {

@@ -4,15 +4,14 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import androidx.navigation.NavController
-import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupActionBarWithNavController
 import com.fsck.k9.activity.K9Activity
 import com.fsck.k9.ui.R
+import com.fsck.k9.ui.findNavController
 
 class SettingsActivity : K9Activity() {
     private lateinit var navController: NavController
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,7 +36,6 @@ class SettingsActivity : K9Activity() {
         onBackPressed()
         return true
     }
-
 
     companion object {
         @JvmStatic fun launch(activity: Activity) {

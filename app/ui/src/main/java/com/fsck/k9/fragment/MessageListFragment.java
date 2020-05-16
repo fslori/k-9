@@ -3,8 +3,6 @@ package com.fsck.k9.fragment;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -18,98 +16,70 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.database.Cursor;
-import android.graphics.Rect;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Parcelable;
-import androidx.fragment.app.DialogFragment;
-import androidx.fragment.app.Fragment;
-import androidx.loader.app.LoaderManager;
-import androidx.loader.app.LoaderManager.LoaderCallbacks;
-import androidx.loader.content.CursorLoader;
-import androidx.loader.content.Loader;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.view.ActionMode;
 import android.text.TextUtils;
-import android.view.ContextMenu;
-import android.view.ContextMenu.ContextMenuInfo;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.Window;
 import android.widget.AdapterView;
-import android.widget.AdapterView.AdapterContextMenuInfo;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.view.ActionMode;
+import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.Fragment;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.fsck.k9.Account;
 import com.fsck.k9.Account.SortType;
 import com.fsck.k9.DI;
 import com.fsck.k9.K9;
 import com.fsck.k9.Preferences;
-import com.fsck.k9.activity.ActivityListener;
-import com.fsck.k9.activity.ChooseFolder;
+import com.fsck.k9.controller.SimpleMessagingListener;
+import com.fsck.k9.ui.choosefolder.ChooseFolderActivity;
 import com.fsck.k9.activity.FolderInfoHolder;
 import com.fsck.k9.activity.misc.ContactPicture;
 import com.fsck.k9.cache.EmailProviderCache;
 import com.fsck.k9.controller.MessageReference;
 import com.fsck.k9.controller.MessagingController;
-import com.fsck.k9.ui.R;
 import com.fsck.k9.fragment.ConfirmationDialogFragment.ConfirmationDialogFragmentListener;
-import com.fsck.k9.fragment.MessageListFragmentComparators.ArrivalComparator;
-import com.fsck.k9.fragment.MessageListFragmentComparators.AttachmentComparator;
-import com.fsck.k9.fragment.MessageListFragmentComparators.ComparatorChain;
-import com.fsck.k9.fragment.MessageListFragmentComparators.DateComparator;
-import com.fsck.k9.fragment.MessageListFragmentComparators.FlaggedComparator;
-import com.fsck.k9.fragment.MessageListFragmentComparators.ReverseComparator;
-import com.fsck.k9.fragment.MessageListFragmentComparators.ReverseIdComparator;
-import com.fsck.k9.fragment.MessageListFragmentComparators.SenderComparator;
-import com.fsck.k9.fragment.MessageListFragmentComparators.SubjectComparator;
-import com.fsck.k9.fragment.MessageListFragmentComparators.UnreadComparator;
-import com.fsck.k9.helper.MergeCursorWithUniqueId;
-import com.fsck.k9.helper.MessageHelper;
 import com.fsck.k9.helper.Utility;
 import com.fsck.k9.mail.Flag;
-import com.fsck.k9.mail.Folder;
 import com.fsck.k9.mail.MessagingException;
 import com.fsck.k9.mailstore.LocalFolder;
 import com.fsck.k9.preferences.StorageEditor;
-import com.fsck.k9.provider.EmailProvider;
-import com.fsck.k9.provider.EmailProvider.MessageColumns;
-import com.fsck.k9.provider.EmailProvider.SpecialColumns;
-import com.fsck.k9.search.ConditionsTreeNode;
 import com.fsck.k9.search.LocalSearch;
-import com.fsck.k9.search.SearchSpecification;
-import com.fsck.k9.search.SearchSpecification.SearchCondition;
-import com.fsck.k9.search.SearchSpecification.SearchField;
-import com.fsck.k9.search.SqlQueryBuilder;
+import com.fsck.k9.ui.R;
+import com.fsck.k9.ui.folders.FolderNameFormatter;
+import com.fsck.k9.ui.folders.FolderNameFormatterFactory;
 import com.fsck.k9.ui.messagelist.MessageListAppearance;
+import com.fsck.k9.ui.messagelist.MessageListConfig;
+import com.fsck.k9.ui.messagelist.MessageListFragmentDiContainer;
+import com.fsck.k9.ui.messagelist.MessageListInfo;
+import com.fsck.k9.ui.messagelist.MessageListItem;
+import com.fsck.k9.ui.messagelist.MessageListViewModel;
+
+import net.jcip.annotations.GuardedBy;
+
+import org.jetbrains.annotations.NotNull;
+
 import timber.log.Timber;
 
-import static com.fsck.k9.fragment.MLFProjectionInfo.ACCOUNT_UUID_COLUMN;
-import static com.fsck.k9.fragment.MLFProjectionInfo.FLAGGED_COLUMN;
-import static com.fsck.k9.fragment.MLFProjectionInfo.FOLDER_SERVER_ID_COLUMN;
-import static com.fsck.k9.fragment.MLFProjectionInfo.ID_COLUMN;
-import static com.fsck.k9.fragment.MLFProjectionInfo.PROJECTION;
-import static com.fsck.k9.fragment.MLFProjectionInfo.READ_COLUMN;
-import static com.fsck.k9.fragment.MLFProjectionInfo.SUBJECT_COLUMN;
-import static com.fsck.k9.fragment.MLFProjectionInfo.THREADED_PROJECTION;
-import static com.fsck.k9.fragment.MLFProjectionInfo.THREAD_COUNT_COLUMN;
-import static com.fsck.k9.fragment.MLFProjectionInfo.THREAD_ROOT_COLUMN;
-import static com.fsck.k9.fragment.MLFProjectionInfo.UID_COLUMN;
+import static com.fsck.k9.Account.Expunge.EXPUNGE_MANUALLY;
+import static com.fsck.k9.fragment.MessageListFragment.MessageListFragmentListener.MAX_PROGRESS;
+import static com.fsck.k9.search.LocalSearchExtensions.getAccountsFromLocalSearch;
 
 
-public class MessageListFragment extends Fragment implements OnItemClickListener,
-        ConfirmationDialogFragmentListener, LoaderCallbacks<Cursor>, MessageListItemActionListener {
+public class MessageListFragment extends Fragment implements OnItemClickListener, OnItemLongClickListener,
+        ConfirmationDialogFragmentListener, MessageListItemActionListener {
 
     public static MessageListFragment newInstance(
             LocalSearch search, boolean isThreadDisplay, boolean threadedList) {
@@ -134,35 +104,17 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
     private static final String STATE_REMOTE_SEARCH_PERFORMED = "remoteSearchPerformed";
     private static final String STATE_MESSAGE_LIST = "listState";
 
-    /**
-     * Maps a {@link SortType} to a {@link Comparator} implementation.
-     */
-    private static final Map<SortType, Comparator<Cursor>> SORT_COMPARATORS;
-
-    static {
-        // fill the mapping at class time loading
-
-        final Map<SortType, Comparator<Cursor>> map =
-                new EnumMap<>(SortType.class);
-        map.put(SortType.SORT_ATTACHMENT, new AttachmentComparator());
-        map.put(SortType.SORT_DATE, new DateComparator());
-        map.put(SortType.SORT_ARRIVAL, new ArrivalComparator());
-        map.put(SortType.SORT_FLAGGED, new FlaggedComparator());
-        map.put(SortType.SORT_SUBJECT, new SubjectComparator());
-        map.put(SortType.SORT_SENDER, new SenderComparator());
-        map.put(SortType.SORT_UNREAD, new UnreadComparator());
-
-        // make it immutable to prevent accidental alteration (content is immutable already)
-        SORT_COMPARATORS = Collections.unmodifiableMap(map);
-    }
-
     private final SortTypeToastProvider sortTypeToastProvider = DI.get(SortTypeToastProvider.class);
+    private final MessageListFragmentDiContainer diContainer = new MessageListFragmentDiContainer(this);
+    private final FolderNameFormatterFactory folderNameFormatterFactory = DI.get(FolderNameFormatterFactory.class);
+    private FolderNameFormatter folderNameFormatter;
 
     ListView listView;
     private SwipeRefreshLayout swipeRefreshLayout;
     Parcelable savedListState;
 
     private MessageListAdapter adapter;
+    private boolean messageListLoaded;
     private View footerView;
     private FolderInfoHolder currentFolder;
     private LayoutInflater layoutInflater;
@@ -170,15 +122,6 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
 
     private Account account;
     private String[] accountUuids;
-
-    private Cursor[] cursors;
-    private boolean[] cursorValid;
-    private int uniqueIdColumn;
-
-    /**
-     * Stores the server ID of the folder that we want to open as soon as possible after load.
-     */
-    private String folderServerId;
 
     private boolean remoteSearchPerformed = false;
     private Future<?> remoteSearchFuture = null;
@@ -210,9 +153,8 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
     private boolean showingThreadedList;
     private boolean isThreadDisplay;
     private Context context;
-    private final ActivityListener activityListener = new MessageListActivityListener();
+    private final MessageListActivityListener activityListener = new MessageListActivityListener();
     private Preferences preferences;
-    private boolean loaderJustInitialized;
     private MessageReference activeMessage;
     /**
      * {@code true} after {@link #onCreate(Bundle)} was executed. Used in {@link #updateTitle()} to
@@ -222,59 +164,16 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
     private LocalBroadcastManager localBroadcastManager;
     private BroadcastReceiver cacheBroadcastReceiver;
     private IntentFilter cacheIntentFilter;
-    /**
-     * Stores the unique ID of the message the context menu was opened for.
-     *
-     * We have to save this because the message list might change between the time the menu was
-     * opened and when the user clicks on a menu item. When this happens the 'adapter position' that
-     * is accessible via the {@code ContextMenu} object might correspond to another list item and we
-     * would end up using/modifying the wrong message.
-     *
-     * The value of this field is {@code 0} when no context menu is currently open.
-     */
-    private long contextMenuUniqueId = 0;
 
 
-
-
-    /**
-     * @return The comparator to use to display messages in an ordered
-     *         fashion. Never {@code null}.
-     */
-    private Comparator<Cursor> getComparator() {
-        final List<Comparator<Cursor>> chain =
-                new ArrayList<>(3 /* we add 3 comparators at most */);
-
-        // Add the specified comparator
-        final Comparator<Cursor> comparator = SORT_COMPARATORS.get(sortType);
-        if (sortAscending) {
-            chain.add(comparator);
-        } else {
-            chain.add(new ReverseComparator<>(comparator));
-        }
-
-        // Add the date comparator if not already specified
-        if (sortType != SortType.SORT_DATE && sortType != SortType.SORT_ARRIVAL) {
-            final Comparator<Cursor> dateComparator = SORT_COMPARATORS.get(SortType.SORT_DATE);
-            if (sortDateAscending) {
-                chain.add(dateComparator);
-            } else {
-                chain.add(new ReverseComparator<>(dateComparator));
-            }
-        }
-
-        // Add the id comparator
-        chain.add(new ReverseIdComparator());
-
-        // Build the comparator chain
-        return new ComparatorChain<>(chain);
+    private MessageListViewModel getViewModel() {
+        return diContainer.getViewModel();
     }
 
-    void folderLoading(String folder, boolean loading) {
-        if (currentFolder != null && currentFolder.serverId.equals(folder)) {
+    void folderLoading(long folderId, boolean loading) {
+        if (currentFolder != null && currentFolder.databaseId == folderId) {
             currentFolder.loading = loading;
         }
-        updateMoreMessagesOfCurrentFolder();
         updateFooterView();
     }
 
@@ -290,14 +189,14 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
     }
 
     private void setWindowProgress() {
-        int level = Window.PROGRESS_END;
+        int level = 0;
 
-        if (currentFolder != null && currentFolder.loading && activityListener.getFolderTotal() > 0) {
-            int divisor = activityListener.getFolderTotal();
-            if (divisor != 0) {
-                level = (Window.PROGRESS_END / divisor) * (activityListener.getFolderCompleted()) ;
-                if (level > Window.PROGRESS_END) {
-                    level = Window.PROGRESS_END;
+        if (currentFolder != null && currentFolder.loading) {
+            int folderTotal = activityListener.getFolderTotal();
+            if (folderTotal > 0) {
+                level = (MAX_PROGRESS * activityListener.getFolderCompleted()) / folderTotal;
+                if (level > MAX_PROGRESS) {
+                    level = MAX_PROGRESS;
                 }
             }
         }
@@ -322,10 +221,10 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
     }
 
     void progress(final boolean progress) {
-        fragmentListener.enableActionBarProgress(progress);
         if (swipeRefreshLayout != null && !progress) {
             swipeRefreshLayout.setRefreshing(false);
         }
+        fragmentListener.setMessageListProgressEnabled(progress);
     }
 
     @Override
@@ -333,7 +232,8 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
         if (view == footerView) {
             if (currentFolder != null && !search.isManualSearch() && currentFolder.moreMessages) {
 
-                messagingController.loadMoreMessages(account, folderServerId, null);
+                long folderId = currentFolder.databaseId;
+                messagingController.loadMoreMessages(account, folderId, null);
 
             } else if (currentFolder != null && isRemoteSearch() &&
                     extraSearchResults != null && extraSearchResults.size() > 0) {
@@ -352,32 +252,39 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
                     updateFooter(null);
                 }
 
-                messagingController.loadSearchResults(account, currentFolder.serverId, toProcess, activityListener);
+                messagingController.loadSearchResults(account, currentFolder.databaseId, toProcess, activityListener);
             }
 
             return;
         }
 
-        Cursor cursor = (Cursor) parent.getItemAtPosition(position);
-        if (cursor == null) {
-            return;
-        }
+        int adapterPosition = listViewToAdapterPosition(position);
+        MessageListItem messageListItem = adapter.getItem(adapterPosition);
 
         if (selectedCount > 0) {
             toggleMessageSelect(position);
         } else {
-            if (showingThreadedList && cursor.getInt(THREAD_COUNT_COLUMN) > 1) {
-                Account account = getAccountFromCursor(cursor);
-                String folderServerId = cursor.getString(FOLDER_SERVER_ID_COLUMN);
+            if (showingThreadedList && messageListItem.getThreadCount() > 1) {
+                Account account = messageListItem.getAccount();
 
                 // If threading is enabled and this item represents a thread, display the thread contents.
-                long rootId = cursor.getLong(THREAD_ROOT_COLUMN);
-                fragmentListener.showThread(account, folderServerId, rootId);
+                long rootId = messageListItem.getThreadRoot();
+                fragmentListener.showThread(account, rootId);
             } else {
                 // This item represents a message; just display the message.
-                openMessageAtPosition(listViewToAdapterPosition(position));
+                openMessageAtPosition(adapterPosition);
             }
         }
+    }
+
+    @Override
+    public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+        if (view == footerView) {
+            return false;
+        }
+
+        toggleMessageSelect(position);
+        return true;
     }
 
     @Override
@@ -398,6 +305,7 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        folderNameFormatter = folderNameFormatterFactory.create(requireActivity());
         Context appContext = getActivity().getApplicationContext();
 
         preferences = Preferences.getPreferences(appContext);
@@ -407,6 +315,8 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
         decodeArguments();
 
         createCacheBroadcastReceiver(appContext);
+
+        getViewModel().getMessageListLiveData().observe(this, this::setMessageList);
 
         initialized = true;
     }
@@ -439,18 +349,10 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
 
         initializeMessageList();
 
-        // This needs to be done before initializing the cursor loader below
+        // This needs to be done before loading the message list below
         initializeSortSettings();
 
-        loaderJustInitialized = true;
-        LoaderManager loaderManager = getLoaderManager();
-        int len = accountUuids.length;
-        cursors = new Cursor[len];
-        cursorValid = new boolean[len];
-        for (int i = 0; i < len; i++) {
-            loaderManager.initLoader(i, null, this);
-            cursorValid[i] = false;
-        }
+        loadMessageList();
     }
 
     @Override
@@ -538,43 +440,30 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
         search = args.getParcelable(ARG_SEARCH);
         title = search.getName();
 
-        String[] accountUuids = search.getAccountUuids();
+        List<Account> searchAccounts = getAccountsFromLocalSearch(search, preferences);
+        allAccounts = search.searchAllAccounts();
+        if (searchAccounts.size() == 1) {
+            Account singleAccount = searchAccounts.get(0);
 
-        singleAccountMode = false;
-        if (accountUuids.length == 1 && !search.searchAllAccounts()) {
             singleAccountMode = true;
-            account = preferences.getAccount(accountUuids[0]);
+            account = singleAccount;
+            accountUuids = new String[] { singleAccount.getUuid() };
+        } else {
+            String[] searchAccountUuids = new String[searchAccounts.size()];
+            for (int i = 0, len = searchAccounts.size(); i < len; i++) {
+                searchAccountUuids[i] = searchAccounts.get(i).getUuid();
+            }
+
+            singleAccountMode = false;
+            account = null;
+            accountUuids = searchAccountUuids;
         }
 
         singleFolderMode = false;
-        if (singleAccountMode && (search.getFolderServerIds().size() == 1)) {
+        if (singleAccountMode && (search.getFolderIds().size() == 1)) {
             singleFolderMode = true;
-            folderServerId = search.getFolderServerIds().get(0);
-            currentFolder = getFolderInfoHolder(folderServerId, account);
-        }
-
-        allAccounts = false;
-        if (singleAccountMode) {
-            this.accountUuids = new String[] { account.getUuid() };
-        } else {
-            if (accountUuids.length == 1 &&
-                    accountUuids[0].equals(SearchSpecification.ALL_ACCOUNTS)) {
-                allAccounts = true;
-
-                List<Account> accounts = preferences.getAccounts();
-
-                this.accountUuids = new String[accounts.size()];
-                for (int i = 0, len = accounts.size(); i < len; i++) {
-                    this.accountUuids[i] = accounts.get(i).getUuid();
-                }
-
-                if (this.accountUuids.length == 1) {
-                    singleAccountMode = true;
-                    account = accounts.get(0);
-                }
-            } else {
-                this.accountUuids = accountUuids;
-            }
+            long folderId = search.getFolderIds().get(0);
+            currentFolder = getFolderInfoHolder(folderId, account);
         }
     }
 
@@ -584,16 +473,10 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
                 requireActivity().getTheme(),
                 getResources(),
                 layoutInflater,
-                MessageHelper.getInstance(getActivity()),
                 ContactPicture.getContactPictureLoader(),
-                preferences,
                 this,
                 getMessageListAppearance()
         );
-
-        if (folderServerId != null) {
-            currentFolder = getFolderInfoHolder(folderServerId, account);
-        }
 
         if (singleFolderMode) {
             listView.addFooterView(getFooterView(listView));
@@ -630,10 +513,10 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
         cacheIntentFilter = new IntentFilter(EmailProviderCache.ACTION_CACHE_UPDATED);
     }
 
-    private FolderInfoHolder getFolderInfoHolder(String folderServerId, Account account) {
+    private FolderInfoHolder getFolderInfoHolder(long folderId, Account account) {
         try {
-            LocalFolder localFolder = MlfUtils.getOpenFolder(folderServerId, account);
-            return new FolderInfoHolder(localFolder, account);
+            LocalFolder localFolder = MlfUtils.getOpenFolder(folderId, account);
+            return new FolderInfoHolder(folderNameFormatter, localFolder, account);
         } catch (MessagingException e) {
             throw new RuntimeException(e);
         }
@@ -644,7 +527,6 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
         super.onPause();
 
         localBroadcastManager.unregisterReceiver(cacheBroadcastReceiver);
-        activityListener.onPause(getActivity());
         messagingController.removeListener(activityListener);
     }
 
@@ -657,19 +539,12 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
     public void onResume() {
         super.onResume();
 
-        if (!loaderJustInitialized) {
-            restartLoader();
-        } else {
-            loaderJustInitialized = false;
-        }
-
         // Check if we have connectivity.  Cache the value.
         if (hasConnectivity == null) {
             hasConnectivity = Utility.hasConnectivity(getActivity().getApplication());
         }
 
         localBroadcastManager.registerReceiver(cacheBroadcastReceiver, cacheIntentFilter);
-        activityListener.onResume(getActivity());
         messagingController.addListener(activityListener);
 
         //Cancel pending new mail notifications when we open an account
@@ -686,24 +561,7 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
             messagingController.cancelNotificationsForAccount(accountWithNotification);
         }
 
-        if (this.account != null && folderServerId != null && !search.isManualSearch()) {
-            messagingController.getFolderUnreadMessageCount(this.account, folderServerId, activityListener);
-        }
-
         updateTitle();
-    }
-
-    private void restartLoader() {
-        if (cursorValid == null) {
-            return;
-        }
-
-        // Refresh the message list
-        LoaderManager loaderManager = getLoaderManager();
-        for (int i = 0; i < accountUuids.length; i++) {
-            loaderManager.restartLoader(i, null, this);
-            cursorValid[i] = false;
-        }
     }
 
     private void initializePullToRefresh(View layout) {
@@ -740,8 +598,7 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
         listView.setFastScrollEnabled(true);
         listView.setScrollingCacheEnabled(false);
         listView.setOnItemClickListener(this);
-
-        registerForContextMenu(listView);
+        listView.setOnItemLongClickListener(this);
     }
 
     public void onCompose() {
@@ -756,26 +613,6 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
         }
     }
 
-    private void onReply(MessageReference messageReference) {
-        fragmentListener.onReply(messageReference);
-    }
-
-    private void onReplyAll(MessageReference messageReference) {
-        fragmentListener.onReplyAll(messageReference);
-    }
-
-    private void onForward(MessageReference messageReference) {
-        fragmentListener.onForward(messageReference);
-    }
-
-    public void onForwardAsAttachment(MessageReference messageReference) {
-        fragmentListener.onForwardAsAttachment(messageReference);
-    }
-
-    private void onResendMessage(MessageReference messageReference) {
-        fragmentListener.onResendMessage(messageReference);
-    }
-
     public void changeSort(SortType sortType) {
         Boolean sortAscending = (this.sortType == sortType) ? !this.sortAscending : null;
         changeSort(sortType, sortAscending);
@@ -785,17 +622,13 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
      * User has requested a remote search.  Setup the bundle and start the intent.
      */
     private void onRemoteSearchRequested() {
-        String searchAccount;
-        String searchFolder;
-
-        searchAccount = account.getUuid();
-        searchFolder = currentFolder.serverId;
-
+        String searchAccount = account.getUuid();
+        long folderId = currentFolder.databaseId;
         String queryString = search.getRemoteSearchArguments();
 
         remoteSearchPerformed = true;
-        remoteSearchFuture = messagingController.searchRemoteMessages(searchAccount, searchFolder,
-                queryString, null, null, activityListener);
+        remoteSearchFuture = messagingController.searchRemoteMessages(searchAccount, folderId, queryString,
+                null, null, activityListener);
 
         swipeRefreshLayout.setEnabled(false);
 
@@ -854,10 +687,7 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
         Toast toast = Toast.makeText(getActivity(), toastString, Toast.LENGTH_SHORT);
         toast.show();
 
-        LoaderManager loaderManager = getLoaderManager();
-        for (int i = 0, len = accountUuids.length; i < len; i++) {
-            loaderManager.restartLoader(i, null, this);
-        }
+        loadMessageList();
     }
 
     public void onCycleSort() {
@@ -878,10 +708,6 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
         }
 
         changeSort(sorts[curIndex]);
-    }
-
-    private void onDelete(MessageReference message) {
-        onDelete(Collections.singletonList(message));
     }
 
     private void onDelete(List<MessageReference> messages) {
@@ -915,24 +741,23 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
                     return;
                 }
 
-                final String destFolder = data.getStringExtra(ChooseFolder.EXTRA_NEW_FOLDER);
+                long destinationFolderId = data.getLongExtra(ChooseFolderActivity.RESULT_SELECTED_FOLDER_ID, -1L);
                 final List<MessageReference> messages = activeMessages;
 
-                if (destFolder != null) {
-
+                if (destinationFolderId != -1L) {
                     activeMessages = null; // don't need it any more
 
                     if (messages.size() > 0) {
-                        MlfUtils.setLastSelectedFolder(preferences, messages, destFolder);
+                        MlfUtils.setLastSelectedFolder(preferences, messages, destinationFolderId);
                     }
 
                     switch (requestCode) {
                         case ACTIVITY_CHOOSE_FOLDER_MOVE:
-                            move(messages, destFolder);
+                            move(messages, destinationFolderId);
                             break;
 
                         case ACTIVITY_CHOOSE_FOLDER_COPY:
-                            copy(messages, destFolder);
+                            copy(messages, destinationFolderId);
                             break;
                         }
                 }
@@ -943,12 +768,12 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
 
     public void onExpunge() {
         if (currentFolder != null) {
-            onExpunge(account, currentFolder.serverId);
+            onExpunge(account, currentFolder.databaseId);
         }
     }
 
-    private void onExpunge(final Account account, String folderServerId) {
-        messagingController.expunge(account, folderServerId);
+    private void onExpunge(final Account account, long folderId) {
+        messagingController.expunge(account, folderId);
     }
 
     public void onEmptyTrash() {
@@ -958,7 +783,12 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
     }
 
     public boolean isShowingTrashFolder() {
-        return singleFolderMode && currentFolder != null && currentFolder.serverId.equals(account.getTrashFolder());
+        if (!singleFolderMode || currentFolder == null) {
+            return false;
+        }
+
+        Long trashFolderId = account.getTrashFolderId();
+        return trashFolderId != null && currentFolder.databaseId == trashFolderId;
     }
 
     private void showDialog(int dialogId) {
@@ -1010,7 +840,7 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
         }
 
         fragment.setTargetFragment(this, dialogId);
-        fragment.show(getFragmentManager(), getDialogTag(dialogId));
+        fragment.show(getParentFragmentManager(), getDialogTag(dialogId));
     }
 
     private String getDialogTag(int dialogId) {
@@ -1057,7 +887,7 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
             return true;
         } else if (id == R.id.expunge) {
             if (currentFolder != null) {
-                onExpunge(account, currentFolder.serverId);
+                onExpunge(account, currentFolder.databaseId);
             }
             return true;
         } else {
@@ -1067,164 +897,6 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
 
     public void onSendPendingMessages() {
         messagingController.sendPendingMessages(account, null);
-    }
-
-    @Override
-    public boolean onContextItemSelected(android.view.MenuItem item) {
-        if (contextMenuUniqueId == 0) {
-            return false;
-        }
-
-        int adapterPosition = getPositionForUniqueId(contextMenuUniqueId);
-        if (adapterPosition == AdapterView.INVALID_POSITION) {
-            return false;
-        }
-
-        int id = item.getItemId();
-        if (id == R.id.deselect || id == R.id.select) {
-            toggleMessageSelectWithAdapterPosition(adapterPosition);
-        } else if (id == R.id.reply) {
-            onReply(getMessageAtPosition(adapterPosition));
-        } else if (id == R.id.reply_all) {
-            onReplyAll(getMessageAtPosition(adapterPosition));
-        } else if (id == R.id.forward) {
-            onForward(getMessageAtPosition(adapterPosition));
-        } else if (id == R.id.forward_as_attachment) {
-            onForwardAsAttachment(getMessageAtPosition(adapterPosition));
-        } else if (id == R.id.send_again) {
-            onResendMessage(getMessageAtPosition(adapterPosition));
-            selectedCount = 0;
-        } else if (id == R.id.same_sender) {
-            Cursor cursor = (Cursor) adapter.getItem(adapterPosition);
-            String senderAddress = MlfUtils.getSenderAddressFromCursor(cursor);
-            if (senderAddress != null) {
-                fragmentListener.showMoreFromSameSender(senderAddress);
-            }
-        } else if (id == R.id.delete) {
-            MessageReference message = getMessageAtPosition(adapterPosition);
-            onDelete(message);
-        } else if (id == R.id.mark_as_read) {
-            setFlag(adapterPosition, Flag.SEEN, true);
-        } else if (id == R.id.mark_as_unread) {
-            setFlag(adapterPosition, Flag.SEEN, false);
-        } else if (id == R.id.flag) {
-            setFlag(adapterPosition, Flag.FLAGGED, true);
-        } else if (id == R.id.unflag) {
-            setFlag(adapterPosition, Flag.FLAGGED, false);
-        } else if (id == R.id.archive) {        // only if the account supports this
-            onArchive(getMessageAtPosition(adapterPosition));
-        } else if (id == R.id.spam) {
-            onSpam(getMessageAtPosition(adapterPosition));
-        } else if (id == R.id.move) {
-            onMove(getMessageAtPosition(adapterPosition));
-        } else if (id == R.id.copy) {
-            onCopy(getMessageAtPosition(adapterPosition));
-        } else if (id == R.id.debug_delete_locally) {       // debug options
-            onDebugClearLocally(getMessageAtPosition(adapterPosition));
-        }
-
-        contextMenuUniqueId = 0;
-        return true;
-    }
-
-    @Override
-    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo) {
-        super.onCreateContextMenu(menu, v, menuInfo);
-
-        AdapterContextMenuInfo info = (AdapterContextMenuInfo) menuInfo;
-        Cursor cursor = (Cursor) listView.getItemAtPosition(info.position);
-
-        if (cursor == null) {
-            return;
-        }
-
-        getActivity().getMenuInflater().inflate(R.menu.message_list_item_context, menu);
-        menu.findItem(R.id.debug_delete_locally).setVisible(K9.DEVELOPER_MODE);
-
-        contextMenuUniqueId = cursor.getLong(uniqueIdColumn);
-        Account account = getAccountFromCursor(cursor);
-
-        String subject = cursor.getString(SUBJECT_COLUMN);
-        boolean read = (cursor.getInt(READ_COLUMN) == 1);
-        boolean flagged = (cursor.getInt(FLAGGED_COLUMN) == 1);
-
-        menu.setHeaderTitle(subject);
-
-        if (selected.contains(contextMenuUniqueId)) {
-            menu.findItem(R.id.select).setVisible(false);
-        } else {
-            menu.findItem(R.id.deselect).setVisible(false);
-        }
-
-        if (read) {
-            menu.findItem(R.id.mark_as_read).setVisible(false);
-        } else {
-            menu.findItem(R.id.mark_as_unread).setVisible(false);
-        }
-
-        if (flagged) {
-            menu.findItem(R.id.flag).setVisible(false);
-        } else {
-            menu.findItem(R.id.unflag).setVisible(false);
-        }
-
-        if (!messagingController.isCopyCapable(account)) {
-            menu.findItem(R.id.copy).setVisible(false);
-        }
-
-        if (!messagingController.isMoveCapable(account)) {
-            menu.findItem(R.id.move).setVisible(false);
-            menu.findItem(R.id.archive).setVisible(false);
-            menu.findItem(R.id.spam).setVisible(false);
-        }
-
-        if (!account.hasArchiveFolder()) {
-            menu.findItem(R.id.archive).setVisible(false);
-        }
-
-        if (!account.hasSpamFolder()) {
-            menu.findItem(R.id.spam).setVisible(false);
-        }
-
-    }
-
-    public void onSwipeRightToLeft(final MotionEvent e1, final MotionEvent e2) {
-        // Handle right-to-left as an un-select
-        handleSwipe(e1, false);
-    }
-
-    public void onSwipeLeftToRight(final MotionEvent e1, final MotionEvent e2) {
-        // Handle left-to-right as a select.
-        handleSwipe(e1, true);
-    }
-
-    /**
-     * Handle a select or unselect swipe event.
-     *
-     * @param downMotion
-     *         Event that started the swipe
-     * @param selected
-     *         {@code true} if this was an attempt to select (i.e. left to right).
-     */
-    private void handleSwipe(final MotionEvent downMotion, final boolean selected) {
-        int x = (int) downMotion.getRawX();
-        int y = (int) downMotion.getRawY();
-
-        Rect headerRect = new Rect();
-        listView.getGlobalVisibleRect(headerRect);
-
-        // Only handle swipes in the visible area of the message list
-        if (headerRect.contains(x, y)) {
-            int[] listPosition = new int[2];
-            listView.getLocationOnScreen(listPosition);
-
-            int listX = x - listPosition[0];
-            int listY = y - listPosition[1];
-
-            int listViewPosition = listView.pointToPosition(listX, listY);
-
-            toggleMessageSelect(listViewPosition);
-        }
     }
 
     private int listViewToAdapterPosition(int position) {
@@ -1243,7 +915,13 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
         return AdapterView.INVALID_POSITION;
     }
 
-    class MessageListActivityListener extends ActivityListener {
+    class MessageListActivityListener extends SimpleMessagingListener {
+        private final Object lock = new Object();
+
+        @GuardedBy("lock") private int folderCompleted = 0;
+        @GuardedBy("lock") private int folderTotal = 0;
+
+
         @Override
         public void remoteSearchFailed(String folderServerId, final String err) {
             handler.post(new Runnable() {
@@ -1259,7 +937,7 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
         }
 
         @Override
-        public void remoteSearchStarted(String folder) {
+        public void remoteSearchStarted(long folderId) {
             handler.progress(true);
             handler.updateFooter(context.getString(R.string.remote_search_sending_query));
         }
@@ -1270,7 +948,7 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
         }
 
         @Override
-        public void remoteSearchFinished(String folderServerId, int numResults, int maxResults, List<String> extraResults) {
+        public void remoteSearchFinished(long folderId, int numResults, int maxResults, List<String> extraResults) {
             handler.progress(false);
             handler.remoteSearchFinished();
             extraSearchResults = extraResults;
@@ -1279,12 +957,10 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
             } else {
                 handler.updateFooter(null);
             }
-            fragmentListener.setMessageListProgress(Window.PROGRESS_END);
-
         }
 
         @Override
-        public void remoteSearchServerQueryComplete(String folderServerId, int numResults, int maxResults) {
+        public void remoteSearchServerQueryComplete(long folderId, int numResults, int maxResults) {
             handler.progress(true);
             if (maxResults != 0 && numResults > maxResults) {
                 handler.updateFooter(context.getResources().getQuantityString(R.plurals.remote_search_downloading_limited,
@@ -1293,46 +969,78 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
                 handler.updateFooter(context.getResources().getQuantityString(R.plurals.remote_search_downloading,
                         numResults, numResults));
             }
-            fragmentListener.setMessageListProgress(Window.PROGRESS_START);
+
+            informUserOfStatus();
         }
 
-        @Override
-        public void informUserOfStatus() {
+        private void informUserOfStatus() {
             handler.refreshTitle();
         }
 
         @Override
-        public void synchronizeMailboxStarted(Account account, String folderServerId, String folderName) {
-            if (updateForMe(account, folderServerId)) {
+        public void synchronizeMailboxStarted(Account account, long folderId) {
+            if (updateForMe(account, folderId)) {
                 handler.progress(true);
-                handler.folderLoading(folderServerId, true);
+                handler.folderLoading(folderId, true);
+
+                synchronized (lock) {
+                    folderCompleted = 0;
+                    folderTotal = 0;
+                }
+
+                informUserOfStatus();
             }
-            super.synchronizeMailboxStarted(account, folderServerId, folderName);
         }
 
         @Override
-        public void synchronizeMailboxFinished(Account account, String folderServerId,
-        int totalMessagesInMailbox, int numNewMessages) {
-
-            if (updateForMe(account, folderServerId)) {
-                handler.progress(false);
-                handler.folderLoading(folderServerId, false);
+        public void synchronizeMailboxHeadersProgress(Account account, String folderServerId, int completed, int total) {
+            synchronized (lock) {
+                folderCompleted = completed;
+                folderTotal = total;
             }
-            super.synchronizeMailboxFinished(account, folderServerId, totalMessagesInMailbox, numNewMessages);
+
+            informUserOfStatus();
         }
 
         @Override
-        public void synchronizeMailboxFailed(Account account, String folderServerId, String message) {
-
-            if (updateForMe(account, folderServerId)) {
-                handler.progress(false);
-                handler.folderLoading(folderServerId, false);
+        public void synchronizeMailboxHeadersFinished(Account account, String folderServerId, int total, int completed) {
+            synchronized (lock) {
+                folderCompleted = 0;
+                folderTotal = 0;
             }
-            super.synchronizeMailboxFailed(account, folderServerId, message);
+
+            informUserOfStatus();
         }
 
-        private boolean updateForMe(Account account, String folderServerId) {
-            if (account == null || folderServerId == null) {
+        @Override
+        public void synchronizeMailboxProgress(Account account, long folderId, int completed, int total) {
+            synchronized (lock) {
+                folderCompleted = completed;
+                folderTotal = total;
+            }
+
+            informUserOfStatus();
+        }
+
+        @Override
+        public void synchronizeMailboxFinished(Account account, long folderId) {
+            if (updateForMe(account, folderId)) {
+                handler.progress(false);
+                handler.folderLoading(folderId, false);
+            }
+        }
+
+        @Override
+        public void synchronizeMailboxFailed(Account account, long folderId, String message) {
+
+            if (updateForMe(account, folderId)) {
+                handler.progress(false);
+                handler.folderLoading(folderId, false);
+            }
+        }
+
+        private boolean updateForMe(Account account, long folderId) {
+            if (account == null) {
                 return false;
             }
 
@@ -1340,8 +1048,20 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
                 return false;
             }
 
-            List<String> folderServerIds = search.getFolderServerIds();
-            return (folderServerIds.isEmpty() || folderServerIds.contains(folderServerId));
+            List<Long> folderIds = search.getFolderIds();
+            return (folderIds.isEmpty() || folderIds.contains(folderId));
+        }
+
+        public int getFolderCompleted() {
+            synchronized (lock) {
+                return folderCompleted;
+            }
+        }
+
+        public int getFolderTotal() {
+            synchronized (lock) {
+                return folderTotal;
+            }
         }
     }
 
@@ -1365,15 +1085,11 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
                 updateFooter(null);
             } else {
                 String message;
-                if (!currentFolder.lastCheckFailed) {
-                    if (account.getDisplayCount() == 0) {
-                        message = context.getString(R.string.message_list_load_more_messages_action);
-                    } else {
-                        message = String.format(context.getString(R.string.load_more_messages_fmt),
-                                account.getDisplayCount());
-                    }
+                if (account.getDisplayCount() == 0) {
+                    message = context.getString(R.string.message_list_load_more_messages_action);
                 } else {
-                    message = context.getString(R.string.status_loading_more_failed);
+                    message = String.format(context.getString(R.string.load_more_messages_fmt),
+                            account.getDisplayCount());
                 }
                 updateFooter(message);
             }
@@ -1417,12 +1133,12 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
 
             selectedCount = 0;
             for (int i = 0, end = adapter.getCount(); i < end; i++) {
-                Cursor cursor = (Cursor) adapter.getItem(i);
-                long uniqueId = cursor.getLong(uniqueIdColumn);
+                MessageListItem messageListItem = adapter.getItem(i);
+                long uniqueId = messageListItem.getUniqueId();
                 this.selected.add(uniqueId);
 
                 if (showingThreadedList) {
-                    int threadCount = cursor.getInt(THREAD_COUNT_COLUMN);
+                    int threadCount = messageListItem.getThreadCount();
                     selectedCount += (threadCount > 1) ? threadCount : 1;
                 } else {
                     selectedCount++;
@@ -1453,20 +1169,23 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
             return;
         }
 
-        toggleMessageSelectWithAdapterPosition(adapterPosition);
+        MessageListItem messageListItem = adapter.getItem(adapterPosition);
+        toggleMessageSelect(messageListItem);
     }
 
     @Override
-    public void toggleMessageFlagWithAdapterPosition(int adapterPosition) {
-        Cursor cursor = (Cursor) adapter.getItem(adapterPosition);
-        boolean flagged = (cursor.getInt(FLAGGED_COLUMN) == 1);
-
-        setFlag(adapterPosition,Flag.FLAGGED, !flagged);
+    public void onToggleMessageSelection(@NotNull MessageListItem messageListItem) {
+        toggleMessageSelect(messageListItem);
     }
 
-    private void toggleMessageSelectWithAdapterPosition(int adapterPosition) {
-        Cursor cursor = (Cursor) adapter.getItem(adapterPosition);
-        long uniqueId = cursor.getLong(uniqueIdColumn);
+    @Override
+    public void onToggleMessageFlag(MessageListItem messageListItem) {
+        boolean flagged = messageListItem.isStarred();
+        setFlag(messageListItem, Flag.FLAGGED, !flagged);
+    }
+
+    private void toggleMessageSelect(MessageListItem messageListItem) {
+        long uniqueId = messageListItem.getUniqueId();
 
         boolean selected = this.selected.contains(uniqueId);
         if (!selected) {
@@ -1477,7 +1196,7 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
 
         int selectedCountDelta = 1;
         if (showingThreadedList) {
-            int threadCount = cursor.getInt(THREAD_COUNT_COLUMN);
+            int threadCount = messageListItem.getThreadCount();
             if (threadCount > 1) {
                 selectedCountDelta = threadCount;
             }
@@ -1520,12 +1239,12 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
         boolean isBatchRead = false;
 
         for (int i = 0, end = adapter.getCount(); i < end; i++) {
-            Cursor cursor = (Cursor) adapter.getItem(i);
-            long uniqueId = cursor.getLong(uniqueIdColumn);
+            MessageListItem messageListItem = adapter.getItem(i);
+            long uniqueId = messageListItem.getUniqueId();
 
             if (selected.contains(uniqueId)) {
-                boolean read = (cursor.getInt(READ_COLUMN) == 1);
-                boolean flagged = (cursor.getInt(FLAGGED_COLUMN) == 1);
+                boolean read = messageListItem.isRead();
+                boolean flagged = messageListItem.isStarred();
 
                 if (!flagged) {
                     isBatchFlag = true;
@@ -1544,20 +1263,15 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
         actionModeCallback.showFlag(isBatchFlag);
     }
 
-    private void setFlag(int adapterPosition, final Flag flag, final boolean newState) {
-        if (adapterPosition == AdapterView.INVALID_POSITION) {
-            return;
-        }
+    private void setFlag(MessageListItem messageListItem, final Flag flag, final boolean newState) {
+        Account account = messageListItem.getAccount();
 
-        Cursor cursor = (Cursor) adapter.getItem(adapterPosition);
-        Account account = preferences.getAccount(cursor.getString(ACCOUNT_UUID_COLUMN));
-
-        if (showingThreadedList && cursor.getInt(THREAD_COUNT_COLUMN) > 1) {
-            long threadRootId = cursor.getLong(THREAD_ROOT_COLUMN);
+        if (showingThreadedList && messageListItem.getThreadCount() > 1) {
+            long threadRootId = messageListItem.getThreadRoot();
             messagingController.setFlagForThreads(account,
                     Collections.singletonList(threadRootId), flag, newState);
         } else {
-            long id = cursor.getLong(ID_COLUMN);
+            long id = messageListItem.getDatabaseId();
             messagingController.setFlag(account, Collections.singletonList(id), flag,
                     newState);
         }
@@ -1575,22 +1289,21 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
         Set<Account> accounts = new HashSet<>();
 
         for (int position = 0, end = adapter.getCount(); position < end; position++) {
-            Cursor cursor = (Cursor) adapter.getItem(position);
-            long uniqueId = cursor.getLong(uniqueIdColumn);
+            MessageListItem messageListItem = adapter.getItem(position);
+            long uniqueId = messageListItem.getUniqueId();
 
             if (selected.contains(uniqueId)) {
-                String uuid = cursor.getString(ACCOUNT_UUID_COLUMN);
-                Account account = preferences.getAccount(uuid);
+                Account account = messageListItem.getAccount();
                 accounts.add(account);
 
-                if (showingThreadedList && cursor.getInt(THREAD_COUNT_COLUMN) > 1) {
+                if (showingThreadedList && messageListItem.getThreadCount() > 1) {
                     List<Long> threadRootIdList = threadMap.get(account);
                     if (threadRootIdList == null) {
                         threadRootIdList = new ArrayList<>();
                         threadMap.put(account, threadRootIdList);
                     }
 
-                    threadRootIdList.add(cursor.getLong(THREAD_ROOT_COLUMN));
+                    threadRootIdList.add(messageListItem.getThreadRoot());
                 } else {
                     List<Long> messageIdList = messageMap.get(account);
                     if (messageIdList == null) {
@@ -1598,7 +1311,7 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
                         messageMap.put(account, messageIdList);
                     }
 
-                    messageIdList.add(cursor.getLong(ID_COLUMN));
+                    messageIdList.add(messageListItem.getDatabaseId());
                 }
             }
         }
@@ -1634,17 +1347,17 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
             return;
         }
 
-        String folderServerId;
+        Long folderId;
         if (isThreadDisplay) {
-            folderServerId = messages.get(0).getFolderServerId();
+            folderId = messages.get(0).getFolderId();
         } else if (singleFolderMode) {
-            folderServerId = currentFolder.folder.getServerId();
+            folderId = currentFolder.databaseId;
         } else {
-            folderServerId = null;
+            folderId = null;
         }
 
 
-        displayFolderChoice(ACTIVITY_CHOOSE_FOLDER_MOVE, folderServerId,
+        displayFolderChoice(ACTIVITY_CHOOSE_FOLDER_MOVE, folderId,
                 messages.get(0).getAccountUuid(), null,
                 messages);
     }
@@ -1664,28 +1377,24 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
             return;
         }
 
-        String folderServerId;
+        Long folderId;
         if (isThreadDisplay) {
-            folderServerId = messages.get(0).getFolderServerId();
+            folderId = messages.get(0).getFolderId();
         } else if (singleFolderMode) {
-            folderServerId = currentFolder.folder.getServerId();
+            folderId = currentFolder.databaseId;
         } else {
-            folderServerId = null;
+            folderId = null;
         }
 
-        displayFolderChoice(ACTIVITY_CHOOSE_FOLDER_COPY, folderServerId,
+        displayFolderChoice(ACTIVITY_CHOOSE_FOLDER_COPY, folderId,
                 messages.get(0).getAccountUuid(),
                 null,
                 messages);
     }
 
-    private void onDebugClearLocally(MessageReference message) {
-        messagingController.debugClearMessagesLocally(Collections.singletonList(message));
-    }
-
     /**
      * Helper method to manage the invocation of {@link #startActivityForResult(Intent, int)} for a
-     * folder operation ({@link ChooseFolder} activity), while saving a list of associated messages.
+     * folder operation ({@link ChooseFolderActivity} activity), while saving a list of associated messages.
      *
      * @param requestCode
      *         If {@code >= 0}, this code will be returned in {@code onActivityResult()} when the
@@ -1693,18 +1402,11 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
      *
      * @see #startActivityForResult(Intent, int)
      */
-    private void displayFolderChoice(int requestCode, String sourceFolder,
-            String accountUuid, String lastSelectedFolder,
+    private void displayFolderChoice(int requestCode, Long sourceFolderId,
+            String accountUuid, Long lastSelectedFolderId,
             List<MessageReference> messages) {
-        Intent intent = new Intent(getActivity(), ChooseFolder.class);
-        intent.putExtra(ChooseFolder.EXTRA_ACCOUNT, accountUuid);
-        intent.putExtra(ChooseFolder.EXTRA_SEL_FOLDER, lastSelectedFolder);
-
-        if (sourceFolder == null) {
-            intent.putExtra(ChooseFolder.EXTRA_SHOW_CURRENT, "yes");
-        } else {
-            intent.putExtra(ChooseFolder.EXTRA_CUR_FOLDER, sourceFolder);
-        }
+        Intent intent = ChooseFolderActivity.buildLaunchIntent(requireContext(), accountUuid, sourceFolderId,
+                lastSelectedFolderId, false, null);
 
         // remember the selected messages for #onActivityResult
         activeMessages = messages;
@@ -1720,10 +1422,9 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
 
         for (Entry<Account, List<MessageReference>> entry : messagesByAccount.entrySet()) {
             Account account = entry.getKey();
-            String archiveFolder = account.getArchiveFolder();
-
-            if (archiveFolder != null) {
-                move(entry.getValue(), archiveFolder);
+            Long archiveFolderId = account.getArchiveFolderId();
+            if (archiveFolderId != null) {
+                move(entry.getValue(), archiveFolderId);
             }
         }
     }
@@ -1742,10 +1443,6 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
             msgList.add(message);
         }
         return messagesByAccount;
-    }
-
-    private void onSpam(MessageReference message) {
-        onSpam(Collections.singletonList(message));
     }
 
     /**
@@ -1769,10 +1466,9 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
 
         for (Entry<Account, List<MessageReference>> entry : messagesByAccount.entrySet()) {
             Account account = entry.getKey();
-            String spamFolder = account.getSpamFolder();
-
-            if (spamFolder != null) {
-                move(entry.getValue(), spamFolder);
+            Long spamFolderId = account.getSpamFolderId();
+            if (spamFolderId != null) {
+                move(entry.getValue(), spamFolderId);
             }
         }
     }
@@ -1822,44 +1518,20 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
 
     /**
      * Copy the specified messages to the specified folder.
-     *
-     * @param messages
-     *         List of messages to copy. Never {@code null}.
-     * @param destination
-     *         The name of the destination folder. Never {@code null}.
      */
-    private void copy(List<MessageReference> messages, final String destination) {
-        copyOrMove(messages, destination, FolderOperation.COPY);
+    private void copy(List<MessageReference> messages, long folderId) {
+        copyOrMove(messages, folderId, FolderOperation.COPY);
     }
 
     /**
      * Move the specified messages to the specified folder.
-     *
-     * @param messages
-     *         The list of messages to move. Never {@code null}.
-     * @param destination
-     *         The name of the destination folder. Never {@code null}.
      */
-    private void move(List<MessageReference> messages, final String destination) {
-        copyOrMove(messages, destination, FolderOperation.MOVE);
+    private void move(List<MessageReference> messages, long folderId) {
+        copyOrMove(messages, folderId, FolderOperation.MOVE);
     }
 
-    /**
-     * The underlying implementation for {@link #copy(List, String)} and
-     * {@link #move(List, String)}. This method was added mainly because those 2
-     * methods share common behavior.
-     *
-     * @param messages
-     *         The list of messages to copy or move. Never {@code null}.
-     * @param destination
-     *         The name of the destination folder. Never {@code null}.
-     * @param operation
-     *         Specifies what operation to perform. Never {@code null}.
-     */
-    private void copyOrMove(List<MessageReference> messages, final String destination,
-            final FolderOperation operation) {
-
-        Map<String, List<MessageReference>> folderMap = new HashMap<>();
+    private void copyOrMove(List<MessageReference> messages, long destinationFolderId, FolderOperation operation) {
+        Map<Long, List<MessageReference>> folderMap = new HashMap<>();
 
         for (MessageReference message : messages) {
             if ((operation == FolderOperation.MOVE && !messagingController.isMoveCapable(message)) ||
@@ -1874,37 +1546,37 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
                 return;
             }
 
-            String folderServerId = message.getFolderServerId();
-            if (folderServerId.equals(destination)) {
+            long folderId = message.getFolderId();
+            if (folderId == destinationFolderId) {
                 // Skip messages already in the destination folder
                 continue;
             }
 
-            List<MessageReference> outMessages = folderMap.get(folderServerId);
+            List<MessageReference> outMessages = folderMap.get(folderId);
             if (outMessages == null) {
                 outMessages = new ArrayList<>();
-                folderMap.put(folderServerId, outMessages);
+                folderMap.put(folderId, outMessages);
             }
 
             outMessages.add(message);
         }
 
-        for (Map.Entry<String, List<MessageReference>> entry : folderMap.entrySet()) {
-            String folderServerId = entry.getKey();
+        for (Map.Entry<Long, List<MessageReference>> entry : folderMap.entrySet()) {
+            long folderId = entry.getKey();
             List<MessageReference> outMessages = entry.getValue();
             Account account = preferences.getAccount(outMessages.get(0).getAccountUuid());
 
             if (operation == FolderOperation.MOVE) {
                 if (showingThreadedList) {
-                    messagingController.moveMessagesInThread(account, folderServerId, outMessages, destination);
+                    messagingController.moveMessagesInThread(account, folderId, outMessages, destinationFolderId);
                 } else {
-                    messagingController.moveMessages(account, folderServerId, outMessages, destination);
+                    messagingController.moveMessages(account, folderId, outMessages, destinationFolderId);
                 }
             } else {
                 if (showingThreadedList) {
-                    messagingController.copyMessagesInThread(account, folderServerId, outMessages, destination);
+                    messagingController.copyMessagesInThread(account, folderId, outMessages, destinationFolderId);
                 } else {
-                    messagingController.copyMessages(account, folderServerId, outMessages, destination);
+                    messagingController.copyMessages(account, folderId, outMessages, destinationFolderId);
                 }
             }
         }
@@ -1955,11 +1627,11 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
             Set<String> accountUuids = new HashSet<>(maxAccounts);
 
             for (int position = 0, end = adapter.getCount(); position < end; position++) {
-                Cursor cursor = (Cursor) adapter.getItem(position);
-                long uniqueId = cursor.getLong(uniqueIdColumn);
+                MessageListItem messageListItem = adapter.getItem(position);
+                long uniqueId = messageListItem.getUniqueId();
 
                 if (selected.contains(uniqueId)) {
-                    String accountUuid = cursor.getString(ACCOUNT_UUID_COLUMN);
+                    String accountUuid = messageListItem.getAccount().getUuid();
                     accountUuids.add(accountUuid);
 
                     if (accountUuids.size() == MessageListFragment.this.accountUuids.length) {
@@ -2132,7 +1804,8 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
 
     public void checkMail() {
         if (isSingleAccountMode() && isSingleFolderMode()) {
-            messagingController.synchronizeMailbox(account, folderServerId, activityListener, null);
+            long folderId = currentFolder.databaseId;
+            messagingController.synchronizeMailbox(account, folderId, activityListener);
             messagingController.sendPendingMessages(account, activityListener);
         } else if (allAccounts) {
             messagingController.checkMail(context, null, true, true, activityListener);
@@ -2161,11 +1834,9 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
                 }
                 // Closing the folder will kill off the connection if we're mid-search.
                 final Account searchAccount = account;
-                final Folder remoteFolder = currentFolder.folder;
-                remoteFolder.close();
                 // Send a remoteSearchFinished() message for good measure.
-                activityListener
-                        .remoteSearchFinished(currentFolder.serverId, 0, searchAccount.getRemoteSearchNumResults(), null);
+                activityListener.remoteSearchFinished(currentFolder.databaseId, 0,
+                        searchAccount.getRemoteSearchNumResults(), null);
             } catch (Exception e) {
                 // Since the user is going back, log and squash any exceptions.
                 Timber.e(e, "Could not abort remote search before going back");
@@ -2236,12 +1907,12 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
     }
 
     private MessageReference getReferenceForPosition(int position) {
-        Cursor cursor = (Cursor) adapter.getItem(position);
+        MessageListItem messageListItem = adapter.getItem(position);
 
-        String accountUuid = cursor.getString(ACCOUNT_UUID_COLUMN);
-        String folderServerId = cursor.getString(FOLDER_SERVER_ID_COLUMN);
-        String messageUid = cursor.getString(UID_COLUMN);
-        return new MessageReference(accountUuid, folderServerId, messageUid, null);
+        String accountUuid = messageListItem.getAccount().getUuid();
+        long folderId = messageListItem.getFolderId();
+        String messageUid = messageListItem.getMessageUid();
+        return new MessageReference(accountUuid, folderId, messageUid, null);
     }
 
     private void openMessageAtPosition(int position) {
@@ -2263,14 +1934,14 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
 
     private int getPosition(MessageReference messageReference) {
         for (int i = 0, len = adapter.getCount(); i < len; i++) {
-            Cursor cursor = (Cursor) adapter.getItem(i);
+            MessageListItem messageListItem = adapter.getItem(i);
 
-            String accountUuid = cursor.getString(ACCOUNT_UUID_COLUMN);
-            String folderServerId = cursor.getString(FOLDER_SERVER_ID_COLUMN);
-            String uid = cursor.getString(UID_COLUMN);
+            String accountUuid = messageListItem.getAccount().getUuid();
+            long folderId = messageListItem.getFolderId();
+            String uid = messageListItem.getMessageUid();
 
             if (accountUuid.equals(messageReference.getAccountUuid()) &&
-                    folderServerId.equals(messageReference.getFolderServerId()) &&
+                    folderId == messageReference.getFolderId() &&
                     uid.equals(messageReference.getUid())) {
                 return i;
             }
@@ -2280,19 +1951,15 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
     }
 
     public interface MessageListFragmentListener {
-        void enableActionBarProgress(boolean enable);
+        int MAX_PROGRESS = 10000;
+
+        void setMessageListProgressEnabled(boolean enable);
         void setMessageListProgress(int level);
-        void showThread(Account account, String folderServerId, long rootId);
-        void showMoreFromSameSender(String senderAddress);
-        void onResendMessage(MessageReference message);
-        void onForward(MessageReference message);
-        void onForwardAsAttachment(MessageReference message);
-        void onReply(MessageReference message);
-        void onReplyAll(MessageReference message);
+        void showThread(Account account, long rootId);
         void openMessage(MessageReference messageReference);
         void setMessageListTitle(String title);
         void onCompose(Account account);
-        boolean startSearch(Account account, String folderServerId);
+        boolean startSearch(Account account, Long folderId);
         void remoteSearchStarted();
         void goBack();
         void updateMenu();
@@ -2314,36 +1981,25 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
         return listViewToAdapterPosition(listViewPosition);
     }
 
-    private int getPositionForUniqueId(long uniqueId) {
-        for (int position = 0, end = adapter.getCount(); position < end; position++) {
-            Cursor cursor = (Cursor) adapter.getItem(position);
-            if (cursor.getLong(uniqueIdColumn) == uniqueId) {
-                return position;
-            }
-        }
-
-        return AdapterView.INVALID_POSITION;
-    }
-
     private MessageReference getMessageAtPosition(int adapterPosition) {
         if (adapterPosition == AdapterView.INVALID_POSITION) {
             return null;
         }
 
-        Cursor cursor = (Cursor) adapter.getItem(adapterPosition);
+        MessageListItem messageListItem = adapter.getItem(adapterPosition);
 
-        String accountUuid = cursor.getString(ACCOUNT_UUID_COLUMN);
-        String folderServerId = cursor.getString(FOLDER_SERVER_ID_COLUMN);
-        String messageUid = cursor.getString(UID_COLUMN);
+        String accountUuid = messageListItem.getAccount().getUuid();
+        long folderId = messageListItem.getFolderId();
+        String messageUid = messageListItem.getMessageUid();
 
-        return new MessageReference(accountUuid, folderServerId, messageUid, null);
+        return new MessageReference(accountUuid, folderId, messageUid, null);
     }
 
     private List<MessageReference> getCheckedMessages() {
         List<MessageReference> messages = new ArrayList<>(selected.size());
         for (int position = 0, end = adapter.getCount(); position < end; position++) {
-            Cursor cursor = (Cursor) adapter.getItem(position);
-            long uniqueId = cursor.getLong(uniqueIdColumn);
+            MessageListItem messageListItem = adapter.getItem(position);
+            long uniqueId = messageListItem.getUniqueId();
 
             if (selected.contains(uniqueId)) {
                 MessageReference message = getMessageAtPosition(position);
@@ -2368,22 +2024,27 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
     }
 
     public void onToggleFlagged() {
-        onToggleFlag(Flag.FLAGGED, FLAGGED_COLUMN);
+        onToggleFlag(Flag.FLAGGED);
     }
 
     public void onToggleRead() {
-        onToggleFlag(Flag.SEEN, READ_COLUMN);
+        onToggleFlag(Flag.SEEN);
     }
 
-    private void onToggleFlag(Flag flag, int flagColumn) {
+    private void onToggleFlag(Flag flag) {
         int adapterPosition = getAdapterPositionForSelectedMessage();
         if (adapterPosition == ListView.INVALID_POSITION) {
             return;
         }
 
-        Cursor cursor = (Cursor) adapter.getItem(adapterPosition);
-        boolean flagState = (cursor.getInt(flagColumn) == 1);
-        setFlag(adapterPosition, flag, !flagState);
+        MessageListItem messageListItem = adapter.getItem(adapterPosition);
+        boolean flagState = false;
+        if (flag == Flag.SEEN) {
+            flagState = messageListItem.isRead();
+        } else if (flag == Flag.FLAGGED) {
+            flagState = messageListItem.isStarred();
+        }
+        setFlag(messageListItem, flag, !flagState);
     }
 
     public void onMove() {
@@ -2408,7 +2069,29 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
     }
 
     public boolean isOutbox() {
-        return (folderServerId != null && folderServerId.equals(account.getOutboxFolder()));
+        if (currentFolder == null) {
+            return false;
+        }
+
+        Long outboxFolderId = account.getOutboxFolderId();
+        if (outboxFolderId == null) {
+            return false;
+        }
+
+        return currentFolder.databaseId == outboxFolderId;
+    }
+
+    private boolean isInbox() {
+        if (currentFolder == null) {
+            return false;
+        }
+
+        Long inboxFolderId = account.getInboxFolderId();
+        if (inboxFolderId == null) {
+            return false;
+        }
+
+        return currentFolder.databaseId == inboxFolderId;
     }
 
     public boolean isRemoteFolder() {
@@ -2418,7 +2101,7 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
 
         if (!messagingController.isMoveCapable(account)) {
             // For POP3 accounts only the Inbox is a remote folder.
-            return (folderServerId != null && folderServerId.equals(account.getInboxFolder()));
+            return isInbox();
         }
 
         return true;
@@ -2428,8 +2111,9 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
         return search.isManualSearch();
     }
 
-    public boolean isAccountExpungeCapable() {
-        return account != null && messagingController.supportsExpunge(account);
+    public boolean shouldShowExpungeAction() {
+        return account != null && account.getExpungePolicy() == EXPUNGE_MANUALLY &&
+                messagingController.supportsExpunge(account);
     }
 
     public void onRemoteSearch() {
@@ -2461,120 +2145,13 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
     }
 
     public boolean onSearchRequested() {
-        String folderServerId = (currentFolder != null) ? currentFolder.serverId : null;
-        return fragmentListener.startSearch(account, folderServerId);
+        Long folderId = (currentFolder != null) ? currentFolder.databaseId : null;
+        return fragmentListener.startSearch(account, folderId);
    }
 
-    @Override
-    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-        String accountUuid = accountUuids[id];
-        Account account = preferences.getAccount(accountUuid);
-
-        String threadId = getThreadId(search);
-
-        Uri uri;
-        String[] projection;
-        boolean needConditions;
-        if (threadId != null) {
-            uri = Uri.withAppendedPath(EmailProvider.CONTENT_URI, "account/" + accountUuid + "/thread/" + threadId);
-            projection = PROJECTION;
-            needConditions = false;
-        } else if (showingThreadedList) {
-            uri = Uri.withAppendedPath(EmailProvider.CONTENT_URI, "account/" + accountUuid + "/messages/threaded");
-            projection = THREADED_PROJECTION;
-            needConditions = true;
-        } else {
-            uri = Uri.withAppendedPath(EmailProvider.CONTENT_URI, "account/" + accountUuid + "/messages");
-            projection = PROJECTION;
-            needConditions = true;
-        }
-
-        StringBuilder query = new StringBuilder();
-        List<String> queryArgs = new ArrayList<>();
-        if (needConditions) {
-            boolean selectActive = activeMessage != null && activeMessage.getAccountUuid().equals(accountUuid);
-
-            if (selectActive) {
-                query.append("(" + MessageColumns.UID + " = ? AND " + SpecialColumns.FOLDER_SERVER_ID + " = ?) OR (");
-                queryArgs.add(activeMessage.getUid());
-                queryArgs.add(activeMessage.getFolderServerId());
-            }
-
-            SqlQueryBuilder.buildWhereClause(account, search.getConditions(), query, queryArgs);
-
-            if (selectActive) {
-                query.append(')');
-            }
-        }
-
-        String selection = query.toString();
-        String[] selectionArgs = queryArgs.toArray(new String[0]);
-
-        String sortOrder = buildSortOrder();
-
-        return new CursorLoader(getActivity(), uri, projection, selection, selectionArgs,
-                sortOrder);
-    }
-
-    private String getThreadId(LocalSearch search) {
-        for (ConditionsTreeNode node : search.getLeafSet()) {
-            SearchCondition condition = node.mCondition;
-            if (condition.field == SearchField.THREAD_ID) {
-                return condition.value;
-            }
-        }
-
-        return null;
-    }
-
-    private String buildSortOrder() {
-        String sortColumn;
-        switch (sortType) {
-            case SORT_ARRIVAL: {
-                sortColumn = MessageColumns.INTERNAL_DATE;
-                break;
-            }
-            case SORT_ATTACHMENT: {
-                sortColumn = "(" + MessageColumns.ATTACHMENT_COUNT + " < 1)";
-                break;
-            }
-            case SORT_FLAGGED: {
-                sortColumn = "(" + MessageColumns.FLAGGED + " != 1)";
-                break;
-            }
-            case SORT_SENDER: {
-                //FIXME
-                sortColumn = MessageColumns.SENDER_LIST;
-                break;
-            }
-            case SORT_SUBJECT: {
-                sortColumn = MessageColumns.SUBJECT + " COLLATE NOCASE";
-                break;
-            }
-            case SORT_UNREAD: {
-                sortColumn = MessageColumns.READ;
-                break;
-            }
-            case SORT_DATE:
-            default: {
-                sortColumn = MessageColumns.DATE;
-            }
-        }
-
-        String sortDirection = (sortAscending) ? " ASC" : " DESC";
-        String secondarySort;
-        if (sortType == SortType.SORT_DATE || sortType == SortType.SORT_ARRIVAL) {
-            secondarySort = "";
-        } else {
-            secondarySort = MessageColumns.DATE + ((sortDateAscending) ? " ASC, " : " DESC, ");
-        }
-
-        return sortColumn + sortDirection + ", " + secondarySort + MessageColumns.ID + " DESC";
-    }
-
-    @Override
-    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
-        if (isThreadDisplay && data.getCount() == 0) {
+    public void setMessageList(MessageListInfo messageListInfo) {
+        List<MessageListItem> messageListItems = messageListInfo.getMessageListItems();
+        if (isThreadDisplay && messageListItems.isEmpty()) {
             handler.goBack();
             return;
         }
@@ -2582,23 +2159,10 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
         swipeRefreshLayout.setRefreshing(false);
         swipeRefreshLayout.setEnabled(isPullToRefreshAllowed());
 
-        final int loaderId = loader.getId();
-        cursors[loaderId] = data;
-        cursorValid[loaderId] = true;
-
-        Cursor cursor;
-        if (cursors.length > 1) {
-            cursor = new MergeCursorWithUniqueId(cursors, getComparator());
-            uniqueIdColumn = cursor.getColumnIndex("_id");
-        } else {
-            cursor = data;
-            uniqueIdColumn = ID_COLUMN;
-        }
-        adapter.setUniqueIdColumn(uniqueIdColumn);
-
         if (isThreadDisplay) {
-            if (cursor.moveToFirst()) {
-                title = cursor.getString(SUBJECT_COLUMN);
+            if (!messageListItems.isEmpty()) {
+                MessageListItem messageListItem = messageListItems.get(0);
+                title = messageListItem.getSubject();
                 if (!TextUtils.isEmpty(title)) {
                     title = Utility.stripSubject(title);
                 }
@@ -2611,80 +2175,40 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
             }
         }
 
-        cleanupSelected(cursor);
+        cleanupSelected(messageListItems);
         adapter.setSelected(selected);
 
-        updateContextMenu(cursor);
-
-        adapter.swapCursor(cursor);
+        adapter.setMessages(messageListItems);
 
         resetActionMode();
         computeBatchDirection();
 
-        if (isLoadFinished()) {
-            if (savedListState != null) {
-                handler.restoreListPosition();
-            }
+        messageListLoaded = true;
 
-            fragmentListener.updateMenu();
+        if (savedListState != null) {
+            handler.restoreListPosition();
         }
-    }
 
-    private void updateMoreMessagesOfCurrentFolder() {
-        if (folderServerId != null) {
-            try {
-                LocalFolder folder = MlfUtils.getOpenFolder(folderServerId, account);
-                currentFolder.setMoreMessagesFromFolder(folder);
-            } catch (MessagingException e) {
-                throw new RuntimeException(e);
-            }
+        fragmentListener.updateMenu();
+
+        if (currentFolder != null) {
+            currentFolder.moreMessages = messageListInfo.getHasMoreMessages();
+            updateFooterView();
         }
     }
 
     public boolean isLoadFinished() {
-        if (cursorValid == null) {
-            return false;
-        }
-
-        for (boolean cursorValid : this.cursorValid) {
-            if (!cursorValid) {
-                return false;
-            }
-        }
-
-        return true;
+        return messageListLoaded;
     }
 
-    /**
-     * Close the context menu when the message it was opened for is no longer in the message list.
-     */
-    private void updateContextMenu(Cursor cursor) {
-        if (contextMenuUniqueId == 0) {
-            return;
-        }
-
-        for (cursor.moveToFirst(); !cursor.isAfterLast(); cursor.moveToNext()) {
-            long uniqueId = cursor.getLong(uniqueIdColumn);
-            if (uniqueId == contextMenuUniqueId) {
-                return;
-            }
-        }
-
-        contextMenuUniqueId = 0;
-        Activity activity = getActivity();
-        if (activity != null) {
-            activity.closeContextMenu();
-        }
-    }
-
-    private void cleanupSelected(Cursor cursor) {
+    private void cleanupSelected(List<MessageListItem> messageListItems) {
         if (selected.isEmpty()) {
             return;
         }
 
         Set<Long> selected = new HashSet<>();
-        for (cursor.moveToFirst(); !cursor.isAfterLast(); cursor.moveToNext()) {
-            long uniqueId = cursor.getLong(uniqueIdColumn);
+        for (MessageListItem messageListItem : messageListItems) {
+            long uniqueId = messageListItem.getUniqueId();
             if (this.selected.contains(uniqueId)) {
                 selected.add(uniqueId);
             }
@@ -2737,25 +2261,14 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
 
         selectedCount = 0;
         for (int i = 0, end = adapter.getCount(); i < end; i++) {
-            Cursor cursor = (Cursor) adapter.getItem(i);
-            long uniqueId = cursor.getLong(uniqueIdColumn);
+            MessageListItem messageListItem = adapter.getItem(i);
+            long uniqueId = messageListItem.getUniqueId();
 
             if (selected.contains(uniqueId)) {
-                int threadCount = cursor.getInt(THREAD_COUNT_COLUMN);
+                int threadCount = messageListItem.getThreadCount();
                 selectedCount += (threadCount > 1) ? threadCount : 1;
             }
         }
-    }
-
-    @Override
-    public void onLoaderReset(Loader<Cursor> loader) {
-        selected.clear();
-        adapter.swapCursor(null);
-    }
-
-    private Account getAccountFromCursor(Cursor cursor) {
-        String accountUuid = cursor.getString(ACCOUNT_UUID_COLUMN);
-        return preferences.getAccount(accountUuid);
     }
 
     void remoteSearchFinished() {
@@ -2778,7 +2291,7 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
 
         // Reload message list with modified query that always includes the active message
         if (isAdded()) {
-            restartLoader();
+            loadMessageList();
         }
 
         // Redraw list immediately
@@ -2814,7 +2327,7 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
 
     private void markAllAsRead() {
         if (isMarkAllAsReadSupported()) {
-            messagingController.markAllMessagesRead(account, folderServerId);
+            messagingController.markAllMessagesRead(account, currentFolder.databaseId);
         }
     }
 
@@ -2833,5 +2346,12 @@ public class MessageListFragment extends Fragment implements OnItemClickListener
 
     public LocalSearch getLocalSearch() {
         return search;
+    }
+
+    private void loadMessageList() {
+        MessageListConfig config = new MessageListConfig(search, showingThreadedList, sortType, sortAscending,
+                sortDateAscending, activeMessage);
+
+        getViewModel().loadMessageList(config);
     }
 }

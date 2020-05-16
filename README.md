@@ -1,6 +1,6 @@
 # K-9 Mail
-[![Build Status](https://travis-ci.org/k9mail/k-9.svg?branch=master)](https://travis-ci.org/k9mail/k-9)
 [![Latest release](https://img.shields.io/github/release/k9mail/k-9.svg?style=flat-square)](https://github.com/k9mail/k-9/releases/latest)
+[![Latest beta release](https://img.shields.io/github/v/release/k9mail/k-9.svg?include_prereleases&style=flat-square)](https://github.com/k9mail/k-9/releases)
 
 K-9 Mail is an open-source email client for Android.
 
@@ -27,7 +27,7 @@ in each version of K-9 Mail.
 
 If the app is not behaving like it should, you might find these resources helpful:
 
-- [User Manual](https://k9mail.github.io/documentation.html)
+- [User Manual](https://k9mail.github.io/documentation)
 - [Frequently Asked Questions](https://k9mail.github.io/documentation/faq.html)
 - [Support Forum/Mailing List](https://groups.google.com/group/k-9-mail)
 

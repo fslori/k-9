@@ -27,6 +27,7 @@ import com.fsck.k9.Preferences;
 import com.fsck.k9.backend.BackendManager;
 import com.fsck.k9.mail.AuthType;
 import com.fsck.k9.mail.ConnectionSecurity;
+import com.fsck.k9.mail.FolderType;
 import com.fsck.k9.mail.ServerSettings;
 import com.fsck.k9.mail.filter.Base64;
 import com.fsck.k9.mailstore.LocalStore;
@@ -78,15 +79,19 @@ public class SettingsImporter {
         public final boolean overwritten;
         public final boolean incomingPasswordNeeded;
         public final boolean outgoingPasswordNeeded;
+        public final String incomingServerName;
+        public final String outgoingServerName;
 
         private AccountDescriptionPair(AccountDescription original, AccountDescription imported,
-                boolean overwritten, boolean incomingPasswordNeeded,
-                boolean outgoingPasswordNeeded) {
+                boolean overwritten, boolean incomingPasswordNeeded, boolean outgoingPasswordNeeded,
+                String incomingServerName, String outgoingServerName) {
             this.original = original;
             this.imported = imported;
             this.overwritten = overwritten;
             this.incomingPasswordNeeded = incomingPasswordNeeded;
             this.outgoingPasswordNeeded = outgoingPasswordNeeded;
+            this.incomingServerName = incomingServerName;
+            this.outgoingServerName = outgoingServerName;
         }
     }
 
@@ -280,11 +285,15 @@ public class SettingsImporter {
             LocalStoreProvider localStoreProvider = DI.get(LocalStoreProvider.class);
 
             // create missing OUTBOX folders
-            for (Account account: preferences.getAccounts()) {
-                if (accountUuids.contains(account.getUuid())) {
-                    LocalStore localStore = localStoreProvider.getInstance(account);
-                    localStore.createLocalFolder(Account.OUTBOX, Account.OUTBOX_NAME);
-                }
+            for (AccountDescriptionPair importedAccount : importedAccounts) {
+                String accountUuid = importedAccount.imported.uuid;
+                Account account = preferences.getAccount(accountUuid);
+                LocalStore localStore = localStoreProvider.getInstance(account);
+
+                long outboxFolderId = localStore.createLocalFolder(Account.OUTBOX_NAME, FolderType.OUTBOX);
+                account.setOutboxFolderId(outboxFolderId);
+
+                preferences.saveAccount(account);
             }
 
             K9.loadPrefs(preferences);
@@ -303,18 +312,18 @@ public class SettingsImporter {
             ImportedSettings settings) {
 
         // Validate global settings
-        Map<String, Object> validatedSettings = GlobalSettings.validate(contentVersion, settings.settings);
+        Map<String, Object> validatedSettings = GeneralSettingsDescriptions.validate(contentVersion, settings.settings);
 
         // Upgrade global settings to current content version
         if (contentVersion != Settings.VERSION) {
-            GlobalSettings.upgrade(contentVersion, validatedSettings);
+            GeneralSettingsDescriptions.upgrade(contentVersion, validatedSettings);
         }
 
         // Convert global settings to the string representation used in preference storage
-        Map<String, String> stringSettings = GlobalSettings.convert(validatedSettings);
+        Map<String, String> stringSettings = GeneralSettingsDescriptions.convert(validatedSettings);
 
         // Use current global settings as base and overwrite with validated settings read from the import file.
-        Map<String, String> mergedSettings = new HashMap<>(GlobalSettings.getGlobalSettings(storage));
+        Map<String, String> mergedSettings = new HashMap<>(GeneralSettingsDescriptions.getGlobalSettings(storage));
         mergedSettings.putAll(stringSettings);
 
         for (Map.Entry<String, String> setting : mergedSettings.entrySet()) {
@@ -370,6 +379,7 @@ public class SettingsImporter {
         String storeUri = backendManager.createStoreUri(incoming);
         putString(editor, accountKeyPrefix + AccountPreferenceSerializer.STORE_URI_KEY, Base64.encode(storeUri));
 
+        String incomingServerName = incoming.host;
         boolean incomingPasswordNeeded = AuthType.EXTERNAL != incoming.authenticationType &&
                 (incoming.password == null || incoming.password.isEmpty());
 
@@ -379,6 +389,7 @@ public class SettingsImporter {
             throw new InvalidSettingValueException();
         }
 
+        String outgoingServerName = null;
         boolean outgoingPasswordNeeded = false;
         if (account.outgoing != null) {
             // Write outgoing server settings (transportUri)
@@ -397,6 +408,8 @@ public class SettingsImporter {
                     outgoing.username != null &&
                     !outgoing.username.isEmpty() &&
                     (outgoing.password == null || outgoing.password.isEmpty());
+
+            outgoingServerName = outgoing.host;
         }
 
         boolean createAccountDisabled = incomingPasswordNeeded || outgoingPasswordNeeded;
@@ -406,20 +419,20 @@ public class SettingsImporter {
 
         // Validate account settings
         Map<String, Object> validatedSettings =
-                AccountSettings.validate(contentVersion, account.settings.settings, !mergeImportedAccount);
+                AccountSettingsDescriptions.validate(contentVersion, account.settings.settings, !mergeImportedAccount);
 
         // Upgrade account settings to current content version
         if (contentVersion != Settings.VERSION) {
-            AccountSettings.upgrade(contentVersion, validatedSettings);
+            AccountSettingsDescriptions.upgrade(contentVersion, validatedSettings);
         }
 
         // Convert account settings to the string representation used in preference storage
-        Map<String, String> stringSettings = AccountSettings.convert(validatedSettings);
+        Map<String, String> stringSettings = AccountSettingsDescriptions.convert(validatedSettings);
 
         // Merge account settings if necessary
         Map<String, String> writeSettings;
         if (mergeImportedAccount) {
-            writeSettings = new HashMap<>(AccountSettings.getAccountSettings(prefs.getStorage(), uuid));
+            writeSettings = new HashMap<>(AccountSettingsDescriptions.getAccountSettings(prefs.getStorage(), uuid));
             writeSettings.putAll(stringSettings);
         } else {
             writeSettings = stringSettings;
@@ -457,7 +470,7 @@ public class SettingsImporter {
 
         AccountDescription imported = new AccountDescription(accountName, uuid);
         return new AccountDescriptionPair(original, imported, mergeImportedAccount,
-                incomingPasswordNeeded, outgoingPasswordNeeded);
+                incomingPasswordNeeded, outgoingPasswordNeeded, incomingServerName, outgoingServerName);
     }
 
     private static void importFolder(StorageEditor editor, int contentVersion, String uuid, ImportedFolder folder,
@@ -465,20 +478,20 @@ public class SettingsImporter {
 
         // Validate folder settings
         Map<String, Object> validatedSettings =
-                FolderSettings.validate(contentVersion, folder.settings.settings, !overwrite);
+                FolderSettingsDescriptions.validate(contentVersion, folder.settings.settings, !overwrite);
 
         // Upgrade folder settings to current content version
         if (contentVersion != Settings.VERSION) {
-            FolderSettings.upgrade(contentVersion, validatedSettings);
+            FolderSettingsDescriptions.upgrade(contentVersion, validatedSettings);
         }
 
         // Convert folder settings to the string representation used in preference storage
-        Map<String, String> stringSettings = FolderSettings.convert(validatedSettings);
+        Map<String, String> stringSettings = FolderSettingsDescriptions.convert(validatedSettings);
 
         // Merge folder settings if necessary
         Map<String, String> writeSettings;
         if (overwrite) {
-            writeSettings = FolderSettings.getFolderSettings(prefs.getStorage(), uuid, folder.name);
+            writeSettings = FolderSettingsDescriptions.getFolderSettings(prefs.getStorage(), uuid, folder.name);
             writeSettings.putAll(stringSettings);
         } else {
             writeSettings = stringSettings;
@@ -543,7 +556,7 @@ public class SettingsImporter {
             putString(editor, accountKeyPrefix + AccountPreferenceSerializer.IDENTITY_NAME_KEY + identitySuffix, identityName);
 
             // Validate email address
-            if (!IdentitySettings.isEmailAddressValid(identity.email)) {
+            if (!IdentitySettingsDescriptions.isEmailAddressValid(identity.email)) {
                 throw new InvalidSettingValueException();
             }
 
@@ -556,21 +569,21 @@ public class SettingsImporter {
 
             if (identity.settings != null) {
                 // Validate identity settings
-                Map<String, Object> validatedSettings = IdentitySettings.validate(
+                Map<String, Object> validatedSettings = IdentitySettingsDescriptions.validate(
                         contentVersion, identity.settings.settings, !mergeSettings);
 
                 // Upgrade identity settings to current content version
                 if (contentVersion != Settings.VERSION) {
-                    IdentitySettings.upgrade(contentVersion, validatedSettings);
+                    IdentitySettingsDescriptions.upgrade(contentVersion, validatedSettings);
                 }
 
                 // Convert identity settings to the representation used in preference storage
-                Map<String, String> stringSettings = IdentitySettings.convert(validatedSettings);
+                Map<String, String> stringSettings = IdentitySettingsDescriptions.convert(validatedSettings);
 
                 // Merge identity settings if necessary
                 Map<String, String> writeSettings;
                 if (mergeSettings) {
-                    writeSettings = new HashMap<>(IdentitySettings.getIdentitySettings(
+                    writeSettings = new HashMap<>(IdentitySettingsDescriptions.getIdentitySettings(
                             prefs.getStorage(), uuid, writeIdentityIndex));
                     writeSettings.putAll(stringSettings);
                 } else {

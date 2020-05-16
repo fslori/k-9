@@ -12,13 +12,12 @@ class App : Application() {
     private val messagingListenerProvider: MessagingListenerProvider by inject()
     private val themeManager: ThemeManager by inject()
 
-
     override fun onCreate() {
         Core.earlyInit(this)
 
         super.onCreate()
 
-        DI.start(this, Core.coreModules + uiModules + appModules)
+        DI.start(this, coreModules + uiModules + appModules)
 
         K9.init(this)
         Core.init(this)
@@ -29,7 +28,6 @@ class App : Application() {
             messagingController.addListener(listener)
         }
     }
-
 
     companion object {
         val appConfig = AppConfig(

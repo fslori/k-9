@@ -9,21 +9,17 @@ import com.fsck.k9.mail.K9MailLib
 import com.fsck.k9.mailstore.LocalStore
 import com.fsck.k9.preferences.Storage
 import com.fsck.k9.preferences.StorageEditor
-import org.koin.standalone.KoinComponent
-import org.koin.standalone.inject
 import timber.log.Timber
 import timber.log.Timber.DebugTree
 
-object K9 : KoinComponent {
+object K9 : EarlyInit {
     private val preferences: Preferences by inject()
-
 
     /**
      * If this is `true`, various development settings will be enabled.
      */
     @JvmField
     val DEVELOPER_MODE = BuildConfig.DEBUG
-
 
     private const val VERSION_MIGRATE_OPENPGP_TO_ACCOUNTS = 63
 
@@ -54,7 +50,6 @@ object K9 : KoinComponent {
      * @see areDatabasesUpToDate
      */
     private var databasesUpToDate = false
-
 
     /**
      * Check if we already know whether all databases are using the current database schema.
@@ -134,7 +129,6 @@ object K9 : KoinComponent {
                 .commit()
     }
 
-
     @JvmStatic
     var isDebugLoggingEnabled: Boolean = DEVELOPER_MODE
         set(debug) {
@@ -188,7 +182,7 @@ object K9 : KoinComponent {
     var notificationHideSubject = NotificationHideSubject.NEVER
 
     @JvmStatic
-    var notificationQuickDeleteBehaviour = NotificationQuickDelete.NEVER
+    var notificationQuickDeleteBehaviour = NotificationQuickDelete.ALWAYS
 
     @JvmStatic
     var lockScreenNotificationVisibility = LockScreenNotificationVisibility.MESSAGE_COUNT
@@ -226,22 +220,11 @@ object K9 : KoinComponent {
     @JvmStatic
     var isMessageViewShowNext = false
 
-    var isGesturesEnabled = true
-
     @JvmStatic
     var isUseVolumeKeysForNavigation = false
 
     @JvmStatic
     var isUseVolumeKeysForListNavigation = false
-
-    @JvmStatic
-    var isStartInUnifiedInbox = false
-
-    @JvmStatic
-    var isMeasureAccounts = true
-
-    @JvmStatic
-    var isCountSearchMessages = true
 
     @JvmStatic
     var isHideSpecialAccounts = false
@@ -253,9 +236,6 @@ object K9 : KoinComponent {
     var isNotificationDuringQuietTimeEnabled = true
     var quietTimeStarts: String? = null
     var quietTimeEnds: String? = null
-
-    @JvmStatic
-    var isWrapFolderNames = false
 
     @JvmStatic
     var isHideUserAgent = false
@@ -330,7 +310,6 @@ object K9 : KoinComponent {
         K9.sortAscending[sortType] = sortAscending
     }
 
-
     fun init(context: Context) {
         K9MailLib.setDebugStatus(object : K9MailLib.DebugStatus {
             override fun enabled(): Boolean = isDebugLoggingEnabled
@@ -347,7 +326,7 @@ object K9 : KoinComponent {
      * Load preferences into our statics.
      *
      * If you're adding a preference here, odds are you'll need to add it to
-     * [com.fsck.k9.preferences.GlobalSettings], too.
+     * [com.fsck.k9.preferences.GeneralSettingsDescriptions], too.
      *
      * @param prefs Preferences to load
      */
@@ -357,12 +336,8 @@ object K9 : KoinComponent {
         isDebugLoggingEnabled = storage.getBoolean("enableDebugLogging", DEVELOPER_MODE)
         isSensitiveDebugLoggingEnabled = storage.getBoolean("enableSensitiveLogging", false)
         isShowAnimations = storage.getBoolean("animations", true)
-        isGesturesEnabled = storage.getBoolean("gesturesEnabled", false)
         isUseVolumeKeysForNavigation = storage.getBoolean("useVolumeKeysForNavigation", false)
         isUseVolumeKeysForListNavigation = storage.getBoolean("useVolumeKeysForListNavigation", false)
-        isStartInUnifiedInbox = storage.getBoolean("startIntegratedInbox", false)
-        isMeasureAccounts = storage.getBoolean("measureAccounts", true)
-        isCountSearchMessages = storage.getBoolean("countSearchMessages", true)
         isHideSpecialAccounts = storage.getBoolean("hideSpecialAccounts", false)
         isMessageListSenderAboveSubject = storage.getBoolean("messageListSenderAboveSubject", false)
         isShowMessageListStars = storage.getBoolean("messageListStars", true)
@@ -383,7 +358,6 @@ object K9 : KoinComponent {
         isUseMessageViewFixedWidthFont = storage.getBoolean("messageViewFixedWidthFont", false)
         isMessageViewReturnToList = storage.getBoolean("messageViewReturnToList", false)
         isMessageViewShowNext = storage.getBoolean("messageViewShowNext", false)
-        isWrapFolderNames = storage.getBoolean("wrapFolderNames", false)
         isHideUserAgent = storage.getBoolean("hideUserAgent", false)
         isHideTimeZone = storage.getBoolean("hideTimeZone", false)
 
@@ -400,7 +374,7 @@ object K9 : KoinComponent {
         sortAscending[sortType] = sortAscendingSetting
 
         notificationHideSubject = storage.getEnum("notificationHideSubject", NotificationHideSubject.NEVER)
-        notificationQuickDeleteBehaviour = storage.getEnum("notificationQuickDelete", NotificationQuickDelete.NEVER)
+        notificationQuickDeleteBehaviour = storage.getEnum("notificationQuickDelete", NotificationQuickDelete.ALWAYS)
 
         lockScreenNotificationVisibility = storage.getEnum("lockScreenNotificationVisibility",
                 LockScreenNotificationVisibility.MESSAGE_COUNT)
@@ -439,7 +413,6 @@ object K9 : KoinComponent {
         editor.putBoolean("enableSensitiveLogging", isSensitiveDebugLoggingEnabled)
         editor.putEnum("backgroundOperations", backgroundOps)
         editor.putBoolean("animations", isShowAnimations)
-        editor.putBoolean("gesturesEnabled", isGesturesEnabled)
         editor.putBoolean("useVolumeKeysForNavigation", isUseVolumeKeysForNavigation)
         editor.putBoolean("useVolumeKeysForListNavigation", isUseVolumeKeysForListNavigation)
         editor.putBoolean("autofitWidth", isAutoFitWidth)
@@ -448,9 +421,6 @@ object K9 : KoinComponent {
         editor.putString("quietTimeStarts", quietTimeStarts)
         editor.putString("quietTimeEnds", quietTimeEnds)
 
-        editor.putBoolean("startIntegratedInbox", isStartInUnifiedInbox)
-        editor.putBoolean("measureAccounts", isMeasureAccounts)
-        editor.putBoolean("countSearchMessages", isCountSearchMessages)
         editor.putBoolean("messageListSenderAboveSubject", isMessageListSenderAboveSubject)
         editor.putBoolean("hideSpecialAccounts", isHideSpecialAccounts)
         editor.putBoolean("messageListStars", isShowMessageListStars)
@@ -463,7 +433,6 @@ object K9 : KoinComponent {
         editor.putBoolean("messageViewFixedWidthFont", isUseMessageViewFixedWidthFont)
         editor.putBoolean("messageViewReturnToList", isMessageViewReturnToList)
         editor.putBoolean("messageViewShowNext", isMessageViewShowNext)
-        editor.putBoolean("wrapFolderNames", isWrapFolderNames)
         editor.putBoolean("hideUserAgent", isHideUserAgent)
         editor.putBoolean("hideTimeZone", isHideTimeZone)
 
@@ -570,7 +539,6 @@ object K9 : KoinComponent {
     const val PUSH_WAKE_LOCK_TIMEOUT = K9MailLib.PUSH_WAKE_LOCK_TIMEOUT
     const val MAIL_SERVICE_WAKE_LOCK_TIMEOUT = 60000
     const val BOOT_RECEIVER_WAKE_LOCK_TIMEOUT = 60000
-
 
     enum class AppTheme {
         LIGHT,

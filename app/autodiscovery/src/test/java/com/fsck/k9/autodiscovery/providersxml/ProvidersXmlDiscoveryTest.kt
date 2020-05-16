@@ -7,12 +7,11 @@ import com.fsck.k9.mail.AuthType
 import com.fsck.k9.mail.ConnectionSecurity
 import com.fsck.k9.mail.transport.smtp.SmtpTransportUriDecoder
 import com.google.common.truth.Truth.assertThat
-import com.nhaarman.mockito_kotlin.doAnswer
-import com.nhaarman.mockito_kotlin.mock
+import com.nhaarman.mockitokotlin2.doAnswer
+import com.nhaarman.mockitokotlin2.mock
 import org.junit.Test
 import org.mockito.ArgumentMatchers.anyString
 import org.robolectric.RuntimeEnvironment
-
 
 class ProvidersXmlDiscoveryTest : RobolectricTest() {
     val backendManager = mock<BackendManager> {
@@ -23,7 +22,6 @@ class ProvidersXmlDiscoveryTest : RobolectricTest() {
     }
     val xmlProvider = ProvidersXmlProvider(RuntimeEnvironment.application)
     val providersXmlDiscovery = ProvidersXmlDiscovery(backendManager, xmlProvider)
-
 
     @Test
     fun discover_withGmailDomain_shouldReturnCorrectSettings() {

@@ -1,38 +1,31 @@
 package com.fsck.k9.ui.settings
 
-import java.util.Calendar
-
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import android.view.LayoutInflater
-import android.view.Menu
-import android.view.MenuItem
-import android.view.View
-import android.view.ViewGroup
-import android.webkit.WebView
-import android.widget.TextView
-import com.fsck.k9.activity.K9Activity
 import com.fsck.k9.ui.R
 import de.cketti.library.changelog.ChangeLog
-import kotlinx.android.synthetic.main.about.*
+import java.util.Calendar
 import kotlinx.android.synthetic.main.about_library.view.*
-
+import kotlinx.android.synthetic.main.fragment_about.*
 import timber.log.Timber
 
 private data class Library(val name: String, val URL: String, val license: String)
 
-class AboutActivity : K9Activity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setLayout(R.layout.about)
+class AboutFragment : Fragment() {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+        return inflater.inflate(R.layout.fragment_about, container, false)
+    }
 
-        supportActionBar!!.setDisplayHomeAsUpEnabled(true)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
         version.text = getVersionNumber()
         versionLayout.setOnClickListener { displayChangeLog() }
@@ -58,7 +51,7 @@ class AboutActivity : K9Activity() {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.app_revision_url))))
         }
 
-        val manager = LinearLayoutManager(this)
+        val manager = LinearLayoutManager(view.context)
         libraries.apply {
             layoutManager = manager
             adapter = LibrariesAdapter(USED_LIBRARIES)
@@ -67,22 +60,14 @@ class AboutActivity : K9Activity() {
         }
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            android.R.id.home -> onBackPressed()
-            else -> return super.onOptionsItemSelected(item)
-        }
-
-        return true
-    }
-
     private fun displayChangeLog() {
-        ChangeLog(this).fullLogDialog.show()
+        ChangeLog(requireActivity()).fullLogDialog.show()
     }
 
     private fun getVersionNumber(): String {
         return try {
-            val packageInfo = packageManager.getPackageInfo(packageName, 0)
+            val context = requireContext()
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
             packageInfo.versionName
         } catch (e: PackageManager.NameNotFoundException) {
             Timber.e(e, "Error getting PackageInfo")
@@ -92,36 +77,40 @@ class AboutActivity : K9Activity() {
 
     companion object {
         private val USED_LIBRARIES = arrayOf(
-                Library("Android Support Library", "https://developer.android.com/topic/libraries/support-library/index.html", "Apache License, Version 2.0"),
-                Library("Android-Support-Preference-V7-Fix", "https://github.com/Gericop/Android-Support-Preference-V7-Fix", "Unlicense/Apache License, Version 2.0"),
-                Library("ckChangeLog", "https://github.com/cketti/ckChangeLog", "Apache License, Version 2.0"),
-                Library("Commons IO", "https://commons.apache.org/io/", "Apache License, Version 2.0"),
-                Library("Glide", "https://github.com/bumptech/glide", "Mixed License"),
-                Library("HoloColorPicker", "https://github.com/LarsWerkman/HoloColorPicker", "Apache License, Version 2.0"),
-                Library("jsoup", "https://jsoup.org/", "MIT License"),
-                Library("jutf7", "http://jutf7.sourceforge.net/", "MIT License"),
-                Library("JZlib", "http://www.jcraft.com/jzlib/", "BSD-style License"),
-                Library("Mime4j", "http://james.apache.org/mime4j/", "Apache License, Version 2.0"),
-                Library("Moshi", "https://github.com/square/moshi", "Apache License, Version 2.0"),
-                Library("Okio", "https://github.com/square/okio", "Apache License, Version 2.0"),
-                Library("SafeContentResolver", "https://github.com/cketti/SafeContentResolver", "Apache License, Version 2.0"),
-                Library("ShowcaseView", "https://github.com/amlcurran/ShowcaseView", "Apache License, Version 2.0"),
-                Library("Timber", "https://github.com/JakeWharton/timber", "Apache License, Version 2.0"),
-                Library("TokenAutoComplete", "https://github.com/splitwise/TokenAutoComplete/", "Apache License, Version 2.0"))
-
-        fun start(context: Context) {
-            val intent = Intent(context, AboutActivity::class.java)
-            context.startActivity(intent)
-        }
+            Library("Android Jetpack libraries", "https://developer.android.com/jetpack", "Apache License, Version 2.0"),
+            Library("AndroidX Preference eXtended", "https://github.com/Gericop/Android-Support-Preference-V7-Fix", "Apache License, Version 2.0"),
+            Library("CircleImageView", "https://github.com/hdodenhof/CircleImageView", "Apache License, Version 2.0"),
+            Library("ckChangeLog", "https://github.com/cketti/ckChangeLog", "Apache License, Version 2.0"),
+            Library("Commons IO", "https://commons.apache.org/io/", "Apache License, Version 2.0"),
+            Library("FastAdapter", "https://github.com/mikepenz/FastAdapter", "Apache License, Version 2.0"),
+            Library("Glide", "https://github.com/bumptech/glide", "BSD, part MIT and Apache 2.0"),
+            Library("Groupie", "https://github.com/lisawray/groupie", "MIT License"),
+            Library("jsoup", "https://jsoup.org/", "MIT License"),
+            Library("jutf7", "http://jutf7.sourceforge.net/", "MIT License"),
+            Library("JZlib", "http://www.jcraft.com/jzlib/", "BSD-style License"),
+            Library("Kotlin Standard Library", "https://kotlinlang.org/api/latest/jvm/stdlib/", "Apache License, Version 2.0"),
+            Library("KotlinX coroutines", "https://github.com/Kotlin/kotlinx.coroutines", "Apache License, Version 2.0"),
+            Library("Material Components for Android", "https://github.com/material-components/material-components-android", "Apache License, Version 2.0"),
+            Library("Material Drawer", "https://github.com/mikepenz/MaterialDrawer", "Apache License, Version 2.0"),
+            Library("Mime4j", "https://james.apache.org/mime4j/", "Apache License, Version 2.0"),
+            Library("MiniDNS", "https://github.com/MiniDNS/minidns", "Multiple, Apache License, Version 2.0"),
+            Library("Moshi", "https://github.com/square/moshi", "Apache License, Version 2.0"),
+            Library("OkHttp", "https://github.com/square/okhttp", "Apache License, Version 2.0"),
+            Library("Okio", "https://github.com/square/okio", "Apache License, Version 2.0"),
+            Library("SafeContentResolver", "https://github.com/cketti/SafeContentResolver", "Apache License, Version 2.0"),
+            Library("SearchPreference", "https://github.com/ByteHamster/SearchPreference", "MIT License"),
+            Library("Timber", "https://github.com/JakeWharton/timber", "Apache License, Version 2.0"),
+            Library("TokenAutoComplete", "https://github.com/splitwise/TokenAutoComplete/", "Apache License, Version 2.0")
+        )
     }
 }
 
-private class LibrariesAdapter(private val dataset: Array<Library>)
-        : RecyclerView.Adapter<LibrariesAdapter.ViewHolder>() {
+private class LibrariesAdapter(private val dataset: Array<Library>) :
+        RecyclerView.Adapter<LibrariesAdapter.ViewHolder>() {
 
     class ViewHolder(val view: View) : RecyclerView.ViewHolder(view)
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) : ViewHolder {
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.about_library, parent, false)
         return ViewHolder(view)
     }

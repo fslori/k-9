@@ -1,16 +1,11 @@
 package com.fsck.k9.backend.api
 
-
 import com.fsck.k9.mail.BodyFactory
 import com.fsck.k9.mail.FetchProfile
 import com.fsck.k9.mail.Flag
-import com.fsck.k9.mail.Folder
 import com.fsck.k9.mail.Message
 import com.fsck.k9.mail.MessagingException
 import com.fsck.k9.mail.Part
-import com.fsck.k9.mail.PushReceiver
-import com.fsck.k9.mail.Pusher
-
 
 interface Backend {
     val supportsSeenFlag: Boolean
@@ -27,7 +22,7 @@ interface Backend {
     fun refreshFolderList()
 
     // TODO: Add a way to cancel the sync process
-    fun sync(folder: String, syncConfig: SyncConfig, listener: SyncListener, providedRemoteFolder: Folder<*>?)
+    fun sync(folder: String, syncConfig: SyncConfig, listener: SyncListener)
 
     @Throws(MessagingException::class)
     fun downloadMessage(syncConfig: SyncConfig, folderServerId: String, messageServerId: String)
@@ -52,28 +47,41 @@ interface Backend {
 
     @Throws(MessagingException::class)
     fun moveMessages(
-            sourceFolderServerId: String,
-            targetFolderServerId: String,
-            messageServerIds: List<String>
+        sourceFolderServerId: String,
+        targetFolderServerId: String,
+        messageServerIds: List<String>
+    ): Map<String, String>?
+
+    @Throws(MessagingException::class)
+    fun moveMessagesAndMarkAsRead(
+        sourceFolderServerId: String,
+        targetFolderServerId: String,
+        messageServerIds: List<String>
     ): Map<String, String>?
 
     @Throws(MessagingException::class)
     fun copyMessages(
-            sourceFolderServerId: String,
-            targetFolderServerId: String,
-            messageServerIds: List<String>
+        sourceFolderServerId: String,
+        targetFolderServerId: String,
+        messageServerIds: List<String>
     ): Map<String, String>?
 
     @Throws(MessagingException::class)
     fun search(
-            folderServerId: String,
-            query: String?,
-            requiredFlags: Set<Flag>?,
-            forbiddenFlags: Set<Flag>?
+        folderServerId: String,
+        query: String?,
+        requiredFlags: Set<Flag>?,
+        forbiddenFlags: Set<Flag>?,
+        performFullTextSearch: Boolean
     ): List<String>
 
     @Throws(MessagingException::class)
-    fun fetchMessage(folderServerId: String, messageServerId: String, fetchProfile: FetchProfile): Message
+    fun fetchMessage(
+        folderServerId: String,
+        messageServerId: String,
+        fetchProfile: FetchProfile,
+        maxDownloadSize: Int
+    ): Message
 
     @Throws(MessagingException::class)
     fun fetchPart(folderServerId: String, messageServerId: String, part: Part, bodyFactory: BodyFactory)
@@ -83,8 +91,6 @@ interface Backend {
 
     @Throws(MessagingException::class)
     fun uploadMessage(folderServerId: String, message: Message): String?
-
-    fun createPusher(receiver: PushReceiver): Pusher
 
     @Throws(MessagingException::class)
     fun checkIncomingServerSettings()

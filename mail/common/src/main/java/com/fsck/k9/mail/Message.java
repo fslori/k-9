@@ -15,6 +15,8 @@ import timber.log.Timber;
 
 
 public abstract class Message implements Part, Body {
+    protected static final String DEFAULT_MIME_TYPE = "text/plain";
+
 
     public enum RecipientType {
         TO, CC, BCC, X_ORIGINAL_TO, DELIVERED_TO, X_ENVELOPE_TO
@@ -25,8 +27,6 @@ public abstract class Message implements Part, Body {
     private Set<Flag> mFlags = EnumSet.noneOf(Flag.class);
 
     private Date mInternalDate;
-
-    protected Folder mFolder;
 
     public boolean olderThan(Date earliestDate) {
         if (earliestDate == null) {
@@ -39,36 +39,12 @@ public abstract class Message implements Part, Body {
         return myDate != null && myDate.before(earliestDate);
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || !(o instanceof Message)) {
-            return false;
-        }
-        Message other = (Message)o;
-        return (getUid().equals(other.getUid())
-                && getFolder().getServerId().equals(other.getFolder().getServerId()));
-    }
-
-    @Override
-    public int hashCode() {
-        final int MULTIPLIER = 31;
-
-        int result = 1;
-        result = MULTIPLIER * result + (mFolder != null ? mFolder.getServerId().hashCode() : 0);
-        result = MULTIPLIER * result + mUid.hashCode();
-        return result;
-    }
-
     public String getUid() {
         return mUid;
     }
 
     public void setUid(String uid) {
         this.mUid = uid;
-    }
-
-    public Folder getFolder() {
-        return mFolder;
     }
 
     public abstract String getSubject();

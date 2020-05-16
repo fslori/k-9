@@ -5,6 +5,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Date;
+import java.util.Objects;
 
 import android.content.ContentValues;
 import android.database.Cursor;
@@ -13,12 +14,11 @@ import androidx.annotation.VisibleForTesting;
 
 import com.fsck.k9.Account;
 import com.fsck.k9.K9;
-import com.fsck.k9.core.BuildConfig;
 import com.fsck.k9.controller.MessageReference;
 import com.fsck.k9.mail.Address;
 import com.fsck.k9.mail.Flag;
-import com.fsck.k9.mail.Folder;
 import com.fsck.k9.mail.MessagingException;
+import com.fsck.k9.mail.MimeType;
 import com.fsck.k9.mail.internet.AddressHeaderBuilder;
 import com.fsck.k9.mail.internet.MimeMessage;
 import com.fsck.k9.mail.message.MessageHeaderParser;
@@ -42,13 +42,10 @@ public class LocalMessage extends MimeMessage {
     private String mimeType;
     private PreviewType previewType;
     private boolean headerNeedsUpdating = false;
+    private LocalFolder mFolder;
 
 
-    private LocalMessage(LocalStore localStore) {
-        this.localStore = localStore;
-    }
-
-    LocalMessage(LocalStore localStore, String uid, Folder folder) {
+    LocalMessage(LocalStore localStore, String uid, LocalFolder folder) {
         this.localStore = localStore;
         this.mUid = uid;
         this.mFolder = folder;
@@ -103,7 +100,7 @@ public class LocalMessage extends MimeMessage {
 
         if (this.mFolder == null) {
             LocalFolder f = new LocalFolder(this.localStore, cursor.getInt(LocalStore.MSG_INDEX_FOLDER_ID));
-            f.open(LocalFolder.OPEN_MODE_RW);
+            f.open();
             this.mFolder = f;
         }
 
@@ -123,7 +120,8 @@ public class LocalMessage extends MimeMessage {
         setFlagInternal(Flag.FORWARDED, forwarded);
 
         setMessagePartId(cursor.getLong(LocalStore.MSG_INDEX_MESSAGE_PART_ID));
-        mimeType = cursor.getString(LocalStore.MSG_INDEX_MIME_TYPE);
+        MimeType mimeType = MimeType.parseOrNull(cursor.getString(LocalStore.MSG_INDEX_MIME_TYPE));
+        this.mimeType = mimeType != null ? mimeType.toString() : DEFAULT_MIME_TYPE;
 
         byte[] header = cursor.getBlob(LocalStore.MSG_INDEX_HEADER_DATA);
         if (header != null) {
@@ -309,7 +307,11 @@ public class LocalMessage extends MimeMessage {
                 public Void doDbWork(final SQLiteDatabase db) throws WrappedException, UnavailableStorageException {
                     ContentValues cv = new ContentValues();
                     cv.put("deleted", 1);
-                    cv.put("empty", 1);
+                    cv.put("preview_type", DatabasePreviewType.fromPreviewType(PreviewType.NONE).getDatabaseValue());
+                    cv.put("read", 0);
+                    cv.put("flagged", 0);
+                    cv.put("answered", 0);
+                    cv.put("forwarded", 0);
                     cv.putNull("subject");
                     cv.putNull("sender_list");
                     cv.putNull("date");
@@ -319,6 +321,11 @@ public class LocalMessage extends MimeMessage {
                     cv.putNull("preview");
                     cv.putNull("reply_to_list");
                     cv.putNull("message_part_id");
+                    cv.putNull("flags");
+                    cv.putNull("attachment_count");
+                    cv.putNull("internal_date");
+                    cv.putNull("mime_type");
+                    cv.putNull("encryption_type");
 
                     db.update("messages", cv, "id = ?", new String[] { Long.toString(databaseId) });
 
@@ -397,18 +404,19 @@ public class LocalMessage extends MimeMessage {
 
     public MessageReference makeMessageReference() {
         if (messageReference == null) {
-            messageReference = new MessageReference(getFolder().getAccountUuid(), getFolder().getServerId(), mUid, null);
+            String accountUuid = getFolder().getAccountUuid();
+            long folderId = getFolder().getDatabaseId();
+            messageReference = new MessageReference(accountUuid, folderId, mUid, null);
         }
         return messageReference;
     }
 
-    @Override
     public LocalFolder getFolder() {
-        return (LocalFolder) super.getFolder();
+        return mFolder;
     }
 
     public String getUri() {
-        return "email://messages/" +  getAccount().getAccountNumber() + "/" + getFolder().getServerId() + "/" + getUid();
+        return "k9mail://messages/" +  getAccount().getAccountNumber() + "/" + getFolder().getDatabaseId() + "/" + getUid();
     }
 
     @Override
@@ -456,20 +464,22 @@ public class LocalMessage extends MimeMessage {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        if (!super.equals(o)) {
-            return false;
-        }
 
-        // distinguish by account uuid, in addition to what Message.equals() does above
-        String thisAccountUuid = getAccountUuid();
-        String thatAccountUuid = ((LocalMessage) o).getAccountUuid();
-        return thisAccountUuid != null ? thisAccountUuid.equals(thatAccountUuid) : thatAccountUuid == null;
+        LocalMessage other = (LocalMessage) o;
+        return Objects.equals(mUid, other.mUid) &&
+                Objects.equals(mFolder, other.mFolder) &&
+                Objects.equals(getAccountUuid(), other.getAccountUuid());
     }
 
     @Override
     public int hashCode() {
-        int result = super.hashCode();
-        result = 31 * result + (getAccountUuid() != null ? getAccountUuid().hashCode() : 0);
+        final int MULTIPLIER = 31;
+
+        int result = 1;
+        String accountUuid = getAccountUuid();
+        result = MULTIPLIER * result + (accountUuid != null ? accountUuid.hashCode() : 0);
+        result = MULTIPLIER * result + (mFolder != null ? mFolder.hashCode() : 0);
+        result = MULTIPLIER * result + mUid.hashCode();
         return result;
     }
 

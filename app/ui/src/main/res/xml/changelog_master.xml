@@ -8,6 +8,127 @@
      They are automatically updated with "ant bump-version".
 -->
 <changelog>
+    <release version="5.714" versioncode="27014">
+        <change>IMAP: Fixed refreshing the folder list</change>
+        <change>Keep drawer open after selecting an account</change>
+        <change>Increased the size of the progress bar shown when refreshing a folder</change>
+        <change>Some smaller bug fixes</change>
+    </release>
+    <release version="5.713" versioncode="27013">
+        <change>Fixed bug where reply/reply all/forward would open an empty new message screen</change>
+    </release>
+    <release version="5.712" versioncode="27012">
+        <change>Fixed crash on startup with Android 7 and older</change>
+    </release>
+    <release version="5.711" versioncode="27011">
+        <change>Fixed some bugs with periodic mail sync (mail was usually checked too often)</change>
+        <change>Fixed a couple of bugs where unnecessary data was kept in the local database</change>
+        <change>Fixed bug where a special folder wasn't removed locally when removed from the server</change>
+        <change>Fixed bug when creating signed-only messages with 'encrypt message subjects' enabled</change>
+        <change>Lots of internal changes</change>
+        <change>Updated translations</change>
+    </release>
+    <release version="5.710" versioncode="27010">
+        <change>Fixed duplicate message bug after moving a message</change>
+        <change>Removed keyboard shortcuts for menu items; on some devices they conflicted with system shortcuts</change>
+        <change>Don't show fullscreen keyboard in landscape mode</change>
+        <change>Fixed bug where line breaks were ignored when loading draft messages</change>
+        <change>POP3: Fixed moving deleted messages to the Trash folder</change>
+    </release>
+    <release version="5.709" versioncode="27009">
+        <change>Display larger preview for image attachments</change>
+        <change>Fixed import and export of folder settings</change>
+        <change>IMAP: Properly handle UIDVALIDITY changes</change>
+        <change>Various smaller bug fixes</change>
+        <change>Updated translations</change>
+    </release>
+    <release version="5.708" versioncode="27008">
+        <change>Long-press on message in message list now selects the message</change>
+        <change>Click on contact picture in message list now selects the message</change>
+        <change>Fixed bug that disabled auto-completion when composing messages</change>
+        <change>Fixed dark/light theme issues</change>
+        <change>Removed 'Gestures' setting</change>
+        <change>Renamed "send again" to "edit as new message"</change>
+    </release>
+    <release version="5.707" versioncode="27007">
+        <change>Fixed a bug in the new 'back button opens default folder' code</change>
+        <change>Fixed a crash on Android 5.x devices with old WebView versions</change>
+        <change>Fixed theme issues in some settings screens</change>
+    </release>
+    <release version="5.706" versioncode="27006">
+        <change>Unified Inbox is now opened by default (if enabled)</change>
+        <change>Back button now opens default folder before exiting the app</change>
+        <change>Fixed bug where the input area for the message body wasn't growing properly</change>
+        <change>Keep read position when switching apps</change>
+        <change>Don't open external links inside the app on old Android/WebView versions</change>
+        <change>Update "auto BCC" recipients when switching accounts in message compose window</change>
+        <change>Fixed UI bug where BCC recipient and the date overlapped when viewing messages</change>
+        <change>Fixed bug that lead to display of inaccurate attachment sizes</change>
+        <change>Opt out of anonymous WebView metrics collection</change>
+        <change>Removed automatic display of "What's New" dialog because of display issues</change>
+        <change>Updated translations</change>
+    </release>
+    <release version="5.705" versioncode="27005">
+        <change>Fixed bug that prevented contact pictures from being displayed</change>
+        <change>Display progress bar when syncing a folder</change>
+        <change>Fixed deleting messages when there's no Trash folder (IMAP)</change>
+        <change>Fixed a crash when encountering messages without a subject</change>
+        <change>Fixed bug that could lead to two message lists being displayed on top of each other</change>
+        <change>Stop trying to open external links inside the app when there's no app installed to handle the content</change>
+        <change>Updated translations</change>
+        <change>A lot of internal changes and improvements</change>
+    </release>
+    <release version="5.704" versioncode="27004">
+        <change>Changed background color of the app icon</change>
+        <change>Added setting to mark a message as read when it is deleted (enabled by default)</change>
+        <change>Fixed crash when trying to reply to encrypted messages</change>
+        <change>Fixed configuration of special folders that lead to Inbox not being checked for new messages automatically</change>
+    </release>
+    <release version="5.703" versioncode="27003">
+        <change>Fixed issue where going back to the app would open the default folder</change>
+        <change>Fixed crash when trying to create a new identity</change>
+        <change>Various smaller bug fixes</change>
+        <change>'Choose folder' now displays folders in the same order as the side drawer</change>
+        <change>Updated translations</change>
+    </release>
+    <release version="5.702" versioncode="27002">
+        <change>The back button now closes the side drawer instead of exiting the app immediately</change>
+        <change>Fixed "Download complete message" for POP3 accounts</change>
+        <change>Fixed bug that could lead to some messages not being synchronized with an IMAP server</change>
+        <change>Fixed bug where sometimes subjects weren't encoded properly</change>
+        <change>Fixed crash when changing theme</change>
+        <change>'Manage folders' now displays folders in the same order as the side drawer</change>
+    </release>
+    <release version="5.701" versioncode="27001">
+        <change>Use account color as accent color in drawer</change>
+        <change>Removed setting 'Start in Unified Inbox'</change>
+        <change>Fixed bug that displayed folders when the Unified Inbox was selected</change>
+        <change>Fixed bug where work was accidentally done in the main thread</change>
+        <change>Updated translations</change>
+    </release>
+    <release version="5.700" versioncode="27000">
+        <change>Major redesign of the user interface</change>
+        <change>Temporarily disabled Push (IMAP IDLE) until we can make it work reliable; your accounts will be polled every 15 minutes instead</change>
+        <change>Deprecated support for the WebDAV protocol; new accounts can no longer be added</change>
+        <change>K-9 Mail now requires Android 5.0 and newer</change>
+        <change>Added support for Autocrypt setup message</change>
+        <change>Added support for encrypted subjects</change>
+        <change>Allow installation on external media (Android 6+ with adopted storage)</change>
+        <change>Removed the broken option to store the message database on external storage</change>
+        <change>Removed the 'remote control' interface third-party apps could use to change some settings in K-9 Mail</change>
+        <change>Fixed a lot of bugs and probably introduced some new ones. Please report bugs.</change>
+    </release>
+    <release version="5.600" versioncode="26000">
+        <change>Allow some outdated HTML attributes so emails from popular internet services are displayed as intended</change>
+        <change>Fixed bug when moving or copying message (IMAP)</change>
+    </release>
+    <release version="5.503" versioncode="25030">
+        <change>Fixed bug with some soft keyboards when auto-completing recipients</change>
+        <change>Fixed crash when decrypting messages</change>
+    </release>
+    <release version="5.502" versioncode="25020">
+        <change>Updated translations</change>
+    </release>
     <release version="5.501" versioncode="25010">
         <change>Fixed bug that lead to important files being stripped from the APK</change>
     </release>

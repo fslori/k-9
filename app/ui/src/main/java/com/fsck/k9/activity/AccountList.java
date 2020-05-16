@@ -72,10 +72,7 @@ public abstract class AccountList extends K9ListActivity implements OnItemClickL
 
         if (displaySpecialAccounts() && !K9.isHideSpecialAccounts()) {
             BaseAccount unifiedInboxAccount = SearchAccount.createUnifiedInboxAccount();
-            BaseAccount allMessagesAccount = SearchAccount.createAllMessagesAccount();
-
             accounts.add(unifiedInboxAccount);
-            accounts.add(allMessagesAccount);
         }
 
         accounts.addAll(realAccounts);
@@ -114,8 +111,6 @@ public abstract class AccountList extends K9ListActivity implements OnItemClickL
                 view = convertView;
             } else {
                 view = getLayoutInflater().inflate(R.layout.accounts_item, parent, false);
-                view.findViewById(R.id.active_icons).setVisibility(View.GONE);
-                view.findViewById(R.id.folders).setVisibility(View.GONE);
             }
 
             AccountViewHolder holder = (AccountViewHolder) view.getTag();

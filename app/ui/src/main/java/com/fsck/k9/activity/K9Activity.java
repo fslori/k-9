@@ -10,20 +10,16 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import android.view.MotionEvent;
 
 import android.view.View;
-import com.fsck.k9.activity.K9ActivityCommon.K9ActivityMagic;
-import com.fsck.k9.activity.misc.SwipeGestureDetector.OnSwipeGestureListener;
 import com.fsck.k9.ui.R;
 import com.fsck.k9.ui.ThemeManager;
 import com.fsck.k9.ui.permissions.PermissionRationaleDialogFragment;
 import timber.log.Timber;
 
 
-public abstract class K9Activity extends AppCompatActivity implements K9ActivityMagic {
+public abstract class K9Activity extends AppCompatActivity {
     public static final int PERMISSIONS_REQUEST_READ_CONTACTS  = 1;
-    public static final int PERMISSIONS_REQUEST_WRITE_CONTACTS = 2;
     private static final String FRAGMENT_TAG_RATIONALE = "rationale";
 
 
@@ -45,28 +41,8 @@ public abstract class K9Activity extends AppCompatActivity implements K9Activity
         super.onResume();
     }
 
-    @Override
-    public boolean dispatchTouchEvent(MotionEvent event) {
-        base.preDispatchTouchEvent(event);
-        return super.dispatchTouchEvent(event);
-    }
-
-    @Override
-    public void setupGestureDetector(OnSwipeGestureListener listener) {
-        base.setupGestureDetector(listener);
-    }
-
     protected void setLayout(@LayoutRes int layoutResId) {
         setContentView(layoutResId);
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        if (toolbar == null) {
-            throw new IllegalArgumentException("K9 layouts must provide a toolbar with id='toolbar'.");
-        }
-        setSupportActionBar(toolbar);
-    }
-
-    protected void setLayout(View view) {
-        setContentView(view);
         Toolbar toolbar = findViewById(R.id.toolbar);
         if (toolbar == null) {
             throw new IllegalArgumentException("K9 layouts must provide a toolbar with id='toolbar'.");
@@ -99,12 +75,6 @@ public abstract class K9Activity extends AppCompatActivity implements K9Activity
         READ_CONTACTS(
                 Manifest.permission.READ_CONTACTS,
                 PERMISSIONS_REQUEST_READ_CONTACTS,
-                R.string.permission_contacts_rationale_title,
-                R.string.permission_contacts_rationale_message
-        ),
-        WRITE_CONTACTS(
-                Manifest.permission.WRITE_CONTACTS,
-                PERMISSIONS_REQUEST_WRITE_CONTACTS,
                 R.string.permission_contacts_rationale_title,
                 R.string.permission_contacts_rationale_message
         );

@@ -73,11 +73,11 @@ public class RecipientPresenter {
     private final ComposePgpEnableByDefaultDecider composePgpEnableByDefaultDecider;
     private final ComposePgpInlineDecider composePgpInlineDecider;
     private final AutocryptStatusInteractor autocryptStatusInteractor;
-    private final RecipientsChangedListener listener;
     private final OpenPgpApiManager openPgpApiManager;
     private final AutocryptDraftStateHeaderParser draftStateHeaderParser;
     private ReplyToParser replyToParser;
     private Account account;
+    private Address[] alwaysBccAddresses;
     private Boolean hasContactPicker;
     @Nullable
     private ComposeCryptoStatus cachedCryptoStatus;
@@ -95,15 +95,13 @@ public class RecipientPresenter {
             ComposePgpInlineDecider composePgpInlineDecider,
             ComposePgpEnableByDefaultDecider composePgpEnableByDefaultDecider,
             AutocryptStatusInteractor autocryptStatusInteractor,
-            ReplyToParser replyToParser, RecipientsChangedListener recipientsChangedListener,
-            AutocryptDraftStateHeaderParser draftStateHeaderParser) {
+            ReplyToParser replyToParser, AutocryptDraftStateHeaderParser draftStateHeaderParser) {
         this.recipientMvpView = recipientMvpView;
         this.context = context;
         this.autocryptStatusInteractor = autocryptStatusInteractor;
         this.composePgpInlineDecider = composePgpInlineDecider;
         this.composePgpEnableByDefaultDecider = composePgpEnableByDefaultDecider;
         this.replyToParser = replyToParser;
-        this.listener = recipientsChangedListener;
         this.openPgpApiManager = openPgpApiManager;
         this.draftStateHeaderParser = draftStateHeaderParser;
 
@@ -287,14 +285,29 @@ public class RecipientPresenter {
     public void addBccAddresses(Address... bccRecipients) {
         if (bccRecipients.length > 0) {
             addRecipientsFromAddresses(RecipientType.BCC, bccRecipients);
-            String bccAddress = account.getAlwaysBcc();
-
-            // If the auto-bcc is the only entry in the BCC list, don't show the Bcc fields.
-            boolean alreadyVisible = recipientMvpView.isBccVisible();
-            boolean singleBccRecipientFromAccount =
-                    bccRecipients.length == 1 && bccRecipients[0].toString().equals(bccAddress);
-            recipientMvpView.setBccVisibility(alreadyVisible || !singleBccRecipientFromAccount);
+            recipientMvpView.setBccVisibility(true);
             updateRecipientExpanderVisibility();
+        }
+    }
+
+    public void addAlwaysBcc() {
+        alwaysBccAddresses = Address.parse(account.getAlwaysBcc());
+
+        new RecipientLoader(context, account.getOpenPgpProvider(), alwaysBccAddresses) {
+            @Override
+            public void deliverResult(List<Recipient> result) {
+                Recipient[] recipientArray = result.toArray(new Recipient[result.size()]);
+                recipientMvpView.silentlyAddBccAddresses(recipientArray);
+
+                stopLoading();
+                abandon();
+            }
+        }.startLoading();
+    }
+
+    private void removeAlwaysBcc() {
+        if (alwaysBccAddresses != null) {
+            recipientMvpView.silentlyRemoveBccAddresses(alwaysBccAddresses);
         }
     }
 
@@ -338,6 +351,9 @@ public class RecipientPresenter {
             recipientMvpView.setBccVisibility(true);
             updateRecipientExpanderVisibility();
         }
+
+        removeAlwaysBcc();
+        addAlwaysBcc();
 
         String openPgpProvider = account.getOpenPgpProvider();
         recipientMvpView.setCryptoProvider(openPgpProvider);
@@ -486,47 +502,38 @@ public class RecipientPresenter {
 
     void onToTokenAdded() {
         asyncUpdateCryptoStatus();
-        listener.onRecipientsChanged();
     }
 
     void onToTokenRemoved() {
         asyncUpdateCryptoStatus();
-        listener.onRecipientsChanged();
     }
 
     void onToTokenChanged() {
         asyncUpdateCryptoStatus();
-        listener.onRecipientsChanged();
     }
 
     void onCcTokenAdded() {
         asyncUpdateCryptoStatus();
-        listener.onRecipientsChanged();
     }
 
     void onCcTokenRemoved() {
         asyncUpdateCryptoStatus();
-        listener.onRecipientsChanged();
     }
 
     void onCcTokenChanged() {
         asyncUpdateCryptoStatus();
-        listener.onRecipientsChanged();
     }
 
     void onBccTokenAdded() {
         asyncUpdateCryptoStatus();
-        listener.onRecipientsChanged();
     }
 
     void onBccTokenRemoved() {
         asyncUpdateCryptoStatus();
-        listener.onRecipientsChanged();
     }
 
     void onBccTokenChanged() {
         asyncUpdateCryptoStatus();
-        listener.onRecipientsChanged();
     }
 
     public void onCryptoModeChanged(CryptoMode cryptoMode) {
@@ -836,10 +843,6 @@ public class RecipientPresenter {
     public boolean shouldSaveRemotely() {
         // TODO more appropriate logic?
         return cachedCryptoStatus == null || !cachedCryptoStatus.isEncryptionEnabled();
-    }
-
-    public interface RecipientsChangedListener {
-        void onRecipientsChanged();
     }
 
     private final OpenPgpApiManagerCallback openPgpCallback = new OpenPgpApiManagerCallback() {

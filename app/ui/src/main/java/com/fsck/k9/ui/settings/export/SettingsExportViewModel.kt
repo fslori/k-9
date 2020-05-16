@@ -5,11 +5,12 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.fsck.k9.Preferences
 import com.fsck.k9.helper.SingleLiveEvent
 import com.fsck.k9.helper.measureRealtimeMillis
 import com.fsck.k9.preferences.SettingsExporter
-import com.fsck.k9.ui.helper.CoroutineScopeViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -18,7 +19,11 @@ import kotlinx.coroutines.withContext
 private typealias AccountUuid = String
 private typealias AccountNumber = Int
 
-class SettingsExportViewModel(val context: Context, val preferences: Preferences) : CoroutineScopeViewModel() {
+class SettingsExportViewModel(
+    val context: Context,
+    val preferences: Preferences,
+    val settingsExporter: SettingsExporter
+) : ViewModel() {
     private val uiModelLiveData = MutableLiveData<SettingsExportUiModel>()
     private val actionLiveData = SingleLiveEvent<Action>()
 
@@ -45,14 +50,13 @@ class SettingsExportViewModel(val context: Context, val preferences: Preferences
                             .toSet()
         }
 
-
     fun getActionEvents(): LiveData<Action> = actionLiveData
 
     fun getUiModel(): LiveData<SettingsExportUiModel> {
         if (uiModelLiveData.value == null) {
             uiModelLiveData.value = uiModel
 
-            launch {
+            viewModelScope.launch {
                 val accounts = withContext(Dispatchers.IO) { preferences.accounts }
 
                 accountsMap = accounts.map { it.accountNumber to it.uuid }.toMap()
@@ -79,7 +83,6 @@ class SettingsExportViewModel(val context: Context, val preferences: Preferences
 
         return uiModelLiveData
     }
-
 
     fun initializeFromSavedState(savedInstanceState: Bundle) {
         savedSelection = SavedListItemSelection(
@@ -113,7 +116,7 @@ class SettingsExportViewModel(val context: Context, val preferences: Preferences
     }
 
     private fun startExportSettings() {
-        val exportFileName = SettingsExporter.generateDatedExportFileName()
+        val exportFileName = settingsExporter.generateDatedExportFileName()
         sendActionEvent(Action.PickDocument(exportFileName, SETTINGS_MIME_TYPE))
     }
 
@@ -127,11 +130,11 @@ class SettingsExportViewModel(val context: Context, val preferences: Preferences
         val includeGeneralSettings = this.includeGeneralSettings
         val selectedAccounts = this.selectedAccounts
 
-        launch {
+        viewModelScope.launch {
             try {
                 val elapsed = measureRealtimeMillis {
                     withContext(Dispatchers.IO) {
-                        SettingsExporter.exportToUri(context, includeGeneralSettings, selectedAccounts, contentUri)
+                        settingsExporter.exportToUri(includeGeneralSettings, selectedAccounts, contentUri)
                     }
                 }
 
@@ -186,7 +189,6 @@ class SettingsExportViewModel(val context: Context, val preferences: Preferences
         actionLiveData.value = action
     }
 
-
     companion object {
         private const val MIN_PROGRESS_DURATION = 1000L
         private const val SETTINGS_MIME_TYPE = "application/octet-stream"
@@ -208,6 +210,6 @@ sealed class Action {
 }
 
 private data class SavedListItemSelection(
-        val includeGeneralSettings: Boolean,
-        val selectedAccountUuids: Set<AccountUuid>
+    val includeGeneralSettings: Boolean,
+    val selectedAccountUuids: Set<AccountUuid>
 )

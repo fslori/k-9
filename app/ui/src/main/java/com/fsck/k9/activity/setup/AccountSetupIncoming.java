@@ -62,6 +62,7 @@ public class AccountSetupIncoming extends K9Activity implements OnClickListener 
     private final MessagingController messagingController = DI.get(MessagingController.class);
     private final BackendManager backendManager = DI.get(BackendManager.class);
     private final K9JobManager jobManager = DI.get(K9JobManager.class);
+    private final AccountCreator accountCreator = DI.get(AccountCreator.class);
 
     private String mStoreType;
     private EditText mUsernameView;
@@ -96,10 +97,6 @@ public class AccountSetupIncoming extends K9Activity implements OnClickListener 
         i.putExtra(EXTRA_ACCOUNT, account.getUuid());
         i.putExtra(EXTRA_MAKE_DEFAULT, makeDefault);
         context.startActivity(i);
-    }
-
-    public static void actionEditIncomingSettings(Activity context, Account account) {
-        context.startActivity(intentActionEditIncomingSettings(context, account));
     }
 
     public static void actionEditIncomingSettings(Context context, String accountUuid) {
@@ -265,7 +262,7 @@ public class AccountSetupIncoming extends K9Activity implements OnClickListener 
             }
 
             if (!editSettings) {
-                mAccount.setDeletePolicy(AccountCreator.getDefaultDeletePolicy(settings.type));
+                mAccount.setDeletePolicy(accountCreator.getDefaultDeletePolicy(settings.type));
             }
 
             // Note that mConnectionSecurityChoices is configured above based on server type
@@ -502,7 +499,7 @@ public class AccountSetupIncoming extends K9Activity implements OnClickListener 
         // Remove listener so as not to trigger validateFields() which is called
         // elsewhere as a result of user interaction.
         mPortView.removeTextChangedListener(validationTextWatcher);
-        mPortView.setText(String.valueOf(AccountCreator.getDefaultPort(securityType, mStoreType)));
+        mPortView.setText(String.valueOf(accountCreator.getDefaultPort(securityType, mStoreType)));
         mPortView.addTextChangedListener(validationTextWatcher);
     }
 
@@ -512,6 +509,11 @@ public class AccountSetupIncoming extends K9Activity implements OnClickListener 
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode != AccountSetupCheckSettings.ACTIVITY_REQUEST_CODE) {
+            super.onActivityResult(requestCode, resultCode, data);
+            return;
+        }
+
         if (resultCode == RESULT_OK) {
             if (Intent.ACTION_EDIT.equals(getIntent().getAction())) {
                 boolean isPushCapable = messagingController.isPushCapable(mAccount);

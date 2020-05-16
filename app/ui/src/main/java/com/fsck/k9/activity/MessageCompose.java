@@ -1,6 +1,7 @@
 package com.fsck.k9.activity;
 
 
+import java.io.File;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -40,10 +41,13 @@ import android.view.View.OnFocusChangeListener;
 import android.view.ViewStub;
 import android.view.Window;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.fsck.k9.Account;
 import com.fsck.k9.Account.MessageFormat;
 import com.fsck.k9.DI;
@@ -80,12 +84,12 @@ import com.fsck.k9.helper.MailTo;
 import com.fsck.k9.helper.ReplyToParser;
 import com.fsck.k9.helper.SimpleTextWatcher;
 import com.fsck.k9.helper.Utility;
-import com.fsck.k9.mail.Address;
 import com.fsck.k9.mail.Flag;
 import com.fsck.k9.mail.Message;
 import com.fsck.k9.mail.Message.RecipientType;
 import com.fsck.k9.mail.MessagingException;
 import com.fsck.k9.mail.internet.MimeMessage;
+import com.fsck.k9.mail.internet.MimeUtility;
 import com.fsck.k9.mailstore.LocalMessage;
 import com.fsck.k9.mailstore.MessageViewInfo;
 import com.fsck.k9.message.AutocryptStatusInteractor;
@@ -104,6 +108,9 @@ import com.fsck.k9.ui.R;
 import com.fsck.k9.ui.ThemeManager;
 import com.fsck.k9.ui.compose.QuotedMessageMvpView;
 import com.fsck.k9.ui.compose.QuotedMessagePresenter;
+import com.fsck.k9.ui.helper.SizeFormatter;
+import com.fsck.k9.ui.messagelist.DefaultFolderProvider;
+
 import org.openintents.openpgp.OpenPgpApiManager;
 import org.openintents.openpgp.util.OpenPgpApi;
 import timber.log.Timber;
@@ -113,8 +120,7 @@ import timber.log.Timber;
 public class MessageCompose extends K9Activity implements OnClickListener,
         CancelListener, AttachmentDownloadCancelListener, OnFocusChangeListener,
         OnOpenPgpInlineChangeListener, OnOpenPgpSignOnlyChangeListener, MessageBuilder.Callback,
-        AttachmentPresenter.AttachmentsChangedListener, RecipientPresenter.RecipientsChangedListener,
-        OnOpenPgpDisableListener {
+        AttachmentPresenter.AttachmentsChangedListener, OnOpenPgpDisableListener {
 
     private static final int DIALOG_SAVE_OR_DISCARD_DRAFT_MESSAGE = 1;
     private static final int DIALOG_CONFIRM_DISCARD_ON_BACK = 2;
@@ -169,10 +175,12 @@ public class MessageCompose extends K9Activity implements OnClickListener,
     private static final Pattern PREFIX = Pattern.compile("^AW[:\\s]\\s*", Pattern.CASE_INSENSITIVE);
 
     private final MessageLoaderHelperFactory messageLoaderHelperFactory = DI.get(MessageLoaderHelperFactory.class);
+    private final DefaultFolderProvider defaultFolderProvider = DI.get(DefaultFolderProvider.class);
 
     private QuotedMessagePresenter quotedMessagePresenter;
     private MessageLoaderHelper messageLoaderHelper;
     private AttachmentPresenter attachmentPresenter;
+    private SizeFormatter sizeFormatter;
 
     private Contacts contacts;
 
@@ -192,6 +200,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
      * have already been added from the restore of the view state.
      */
     private boolean relatedMessageProcessed = false;
+    private MessageViewInfo currentMessageViewInfo;
 
     private RecipientPresenter recipientPresenter;
     private MessageBuilder currentMessageBuilder;
@@ -239,6 +248,8 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         setLayout(R.layout.message_compose);
         ViewStub contentContainer = findViewById(R.id.message_compose_content);
 
+        sizeFormatter = new SizeFormatter(getResources());
+
         ThemeManager themeManager = getThemeManager();
         int messageComposeThemeResourceId = themeManager.getMessageComposeThemeResourceId();
         ContextThemeWrapper themeContext = new ContextThemeWrapper(this, messageComposeThemeResourceId);
@@ -280,7 +291,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
              * There are no accounts set up. This should not have happened. Prompt the
              * user to set up an account as an acceptable bailout.
              */
-            startActivity(new Intent(this, Accounts.class));
+            MessageList.launch(this);
             changesMadeSinceLastSave = false;
             finish();
             return;
@@ -298,7 +309,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         OpenPgpApiManager openPgpApiManager = new OpenPgpApiManager(getApplicationContext(), this);
         recipientPresenter = new RecipientPresenter(getApplicationContext(), getSupportLoaderManager(),
                 openPgpApiManager, recipientMvpView, account, composePgpInlineDecider, composePgpEnableByDefaultDecider,
-                AutocryptStatusInteractor.getInstance(), new ReplyToParser(), this,
+                AutocryptStatusInteractor.getInstance(), new ReplyToParser(),
                 DI.get(AutocryptDraftStateHeaderParser.class));
         recipientPresenter.asyncUpdateCryptoStatus();
 
@@ -419,13 +430,6 @@ public class MessageCompose extends K9Activity implements OnClickListener,
                     Parcelable cachedDecryptionResult = intent.getParcelableExtra(EXTRA_MESSAGE_DECRYPTION_RESULT);
                     messageLoaderHelper.asyncStartOrResumeLoadingMessage(
                             relatedMessageReference, cachedDecryptionResult);
-                }
-            }
-
-            if (action != Action.EDIT_DRAFT) {
-                String alwaysBccString = account.getAlwaysBcc();
-                if (!TextUtils.isEmpty(alwaysBccString)) {
-                    recipientPresenter.addBccAddresses(Address.parse(alwaysBccString));
                 }
             }
         }
@@ -608,7 +612,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
 
         outState.putBoolean(STATE_KEY_SOURCE_MESSAGE_PROCED, relatedMessageProcessed);
         outState.putLong(STATE_KEY_DRAFT_ID, draftId);
-        outState.putSerializable(STATE_IDENTITY, identity);
+        outState.putParcelable(STATE_IDENTITY, identity);
         outState.putBoolean(STATE_IDENTITY_CHANGED, identityChanged);
         outState.putString(STATE_IN_REPLY_TO, repliedToMessageId);
         outState.putString(STATE_REFERENCES, referencedMessageIds);
@@ -642,7 +646,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         attachmentPresenter.onRestoreInstanceState(savedInstanceState);
 
         draftId = savedInstanceState.getLong(STATE_KEY_DRAFT_ID);
-        identity = (Identity) savedInstanceState.getSerializable(STATE_IDENTITY);
+        identity = savedInstanceState.getParcelable(STATE_IDENTITY);
         identityChanged = savedInstanceState.getBoolean(STATE_IDENTITY_CHANGED);
         repliedToMessageId = savedInstanceState.getString(STATE_IN_REPLY_TO);
         referencedMessageIds = savedInstanceState.getString(STATE_REFERENCES);
@@ -783,7 +787,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         internalMessageHandler.sendEmptyMessage(MSG_DISCARDED_DRAFT);
         changesMadeSinceLastSave = false;
         if (navigateUp) {
-            openAutoExpandFolder();
+            openDefaultFolder();
         } else {
             finish();
         }
@@ -839,7 +843,10 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         if ((requestCode & REQUEST_MASK_ATTACHMENT_PRESENTER) == REQUEST_MASK_ATTACHMENT_PRESENTER) {
             requestCode ^= REQUEST_MASK_ATTACHMENT_PRESENTER;
             attachmentPresenter.onActivityResult(resultCode, requestCode, data);
+            return;
         }
+
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
     private void onAccountChosen(Account account, Identity identity) {
@@ -947,11 +954,6 @@ public class MessageCompose extends K9Activity implements OnClickListener,
     }
 
     @Override
-    public void onRecipientsChanged() {
-        changesMadeSinceLastSave = true;
-    }
-
-    @Override
     public void onClick(View view) {
         if (view.getId() == R.id.identity) {
             showDialog(DIALOG_CHOOSE_IDENTITY);
@@ -1052,7 +1054,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
                 onDiscard();
             } else {
                 if (navigateUp) {
-                    openAutoExpandFolder();
+                    openDefaultFolder();
                 } else {
                     super.onBackPressed();
                 }
@@ -1060,11 +1062,11 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         }
     }
 
-    private void openAutoExpandFolder() {
-        String folder = account.getAutoExpandFolder();
-        LocalSearch search = new LocalSearch(folder);
+    private void openDefaultFolder() {
+        long folderId = defaultFolderProvider.getDefaultFolder(account);
+        LocalSearch search = new LocalSearch();
         search.addAccountUuid(account.getUuid());
-        search.addAllowedFolder(folder);
+        search.addAllowedFolder(folderId);
         MessageList.actionDisplaySearch(this, search, false, true);
         finish();
     }
@@ -1179,7 +1181,9 @@ public class MessageCompose extends K9Activity implements OnClickListener,
             throw new IllegalStateException("tried to edit quoted message with no referenced message");
         }
 
-        messageLoaderHelper.asyncStartOrResumeLoadingMessage(relatedMessageReference, null);
+        if (currentMessageViewInfo != null) {
+            loadLocalMessageForDisplay(currentMessageViewInfo, action);
+        }
     }
 
     /**
@@ -1344,28 +1348,29 @@ public class MessageCompose extends K9Activity implements OnClickListener,
 
         Identity newIdentity = new Identity();
         if (k9identity.containsKey(IdentityField.SIGNATURE)) {
-            newIdentity.setSignatureUse(true);
-            newIdentity.setSignature(k9identity.get(IdentityField.SIGNATURE));
+            newIdentity = newIdentity
+                    .withSignatureUse(true)
+                    .withSignature(k9identity.get(IdentityField.SIGNATURE));
             signatureChanged = true;
         } else {
             if (message instanceof LocalMessage) {
-                newIdentity.setSignatureUse(((LocalMessage) message).getFolder().getSignatureUse());
+                newIdentity = newIdentity.withSignatureUse(((LocalMessage) message).getFolder().getSignatureUse());
             }
-            newIdentity.setSignature(identity.getSignature());
+            newIdentity = newIdentity.withSignature(identity.getSignature());
         }
 
         if (k9identity.containsKey(IdentityField.NAME)) {
-            newIdentity.setName(k9identity.get(IdentityField.NAME));
+            newIdentity = newIdentity.withName(k9identity.get(IdentityField.NAME));
             identityChanged = true;
         } else {
-            newIdentity.setName(identity.getName());
+            newIdentity = newIdentity.withName(identity.getName());
         }
 
         if (k9identity.containsKey(IdentityField.EMAIL)) {
-            newIdentity.setEmail(k9identity.get(IdentityField.EMAIL));
+            newIdentity = newIdentity.withEmail(k9identity.get(IdentityField.EMAIL));
             identityChanged = true;
         } else {
-            newIdentity.setEmail(identity.getEmail());
+            newIdentity = newIdentity.withEmail(identity.getEmail());
         }
 
         if (k9identity.containsKey(IdentityField.ORIGINAL_MESSAGE)) {
@@ -1436,17 +1441,16 @@ public class MessageCompose extends K9Activity implements OnClickListener,
          **/
         private void updateReferencedMessage() {
             if (messageReference != null && messageReference.getFlag() != null) {
-                Timber.d("Setting referenced message (%s, %s) flag to %s",
-                        messageReference.getFolderServerId(),
-                        messageReference.getUid(),
-                        messageReference.getFlag());
+                String accountUuid = messageReference.getAccountUuid();
+                Account account = Preferences.getPreferences(context).getAccount(accountUuid);
+                long folderId = messageReference.getFolderId();
+                String sourceMessageUid = messageReference.getUid();
+                Flag flag = messageReference.getFlag();
 
-                final Account account = Preferences.getPreferences(context)
-                        .getAccount(messageReference.getAccountUuid());
-                final String folderServerId = messageReference.getFolderServerId();
-                final String sourceMessageUid = messageReference.getUid();
-                MessagingController.getInstance(context).setFlag(account, folderServerId,
-                        sourceMessageUid, messageReference.getFlag(), true);
+                Timber.d("Setting referenced message (%d, %s) flag to %s", folderId, sourceMessageUid, flag);
+
+                MessagingController messagingController = MessagingController.getInstance(context);
+                messagingController.setFlag(account, folderId, sourceMessageUid, flag, true);
             }
         }
     }
@@ -1575,6 +1579,8 @@ public class MessageCompose extends K9Activity implements OnClickListener,
     }
 
     public void loadLocalMessageForDisplay(MessageViewInfo messageViewInfo, Action action) {
+        currentMessageViewInfo = messageViewInfo;
+
         // We check to see if we've previously processed the source message since this
         // could be called when switching from HTML to text replies. If that happens, we
         // only want to update the UI with quoted text (which picks the appropriate
@@ -1664,18 +1670,19 @@ public class MessageCompose extends K9Activity implements OnClickListener,
     public MessagingListener messagingListener = new SimpleMessagingListener() {
 
         @Override
-        public void messageUidChanged(Account account, String folderServerId, String oldUid, String newUid) {
+        public void messageUidChanged(Account account, long folderId, String oldUid, String newUid) {
             if (relatedMessageReference == null) {
                 return;
             }
 
-            Account sourceAccount = Preferences.getPreferences(MessageCompose.this)
-                    .getAccount(relatedMessageReference.getAccountUuid());
-            String sourceFolder = relatedMessageReference.getFolderServerId();
+            String sourceAccountUuid = relatedMessageReference.getAccountUuid();
+            long sourceFolderId = relatedMessageReference.getFolderId();
             String sourceMessageUid = relatedMessageReference.getUid();
 
-            boolean changedMessageIsCurrent =
-                    account.equals(sourceAccount) && folderServerId.equals(sourceFolder) && oldUid.equals(sourceMessageUid);
+            boolean changedMessageIsCurrent = account.getUuid().equals(sourceAccountUuid) &&
+                    folderId == sourceFolderId &&
+                    oldUid.equals(sourceMessageUid);
+
             if (changedMessageIsCurrent) {
                 relatedMessageReference = relatedMessageReference.withModifiedUid(newUid);
             }
@@ -1735,6 +1742,8 @@ public class MessageCompose extends K9Activity implements OnClickListener,
 
         @Override
         public void addAttachmentView(final Attachment attachment) {
+            attachmentsView.setVisibility(View.VISIBLE);
+
             View view = getLayoutInflater().inflate(R.layout.message_compose_attachment, attachmentsView, false);
             attachmentViews.put(attachment.uri, view);
 
@@ -1765,9 +1774,30 @@ public class MessageCompose extends K9Activity implements OnClickListener,
                 nameView.setText(R.string.loading_attachment);
             }
 
+            if (attachment.size != null && attachment.size >= 0) {
+                TextView sizeView = view.findViewById(R.id.attachment_size);
+                sizeView.setText(sizeFormatter.formatSize(attachment.size));
+            }
+
             View progressBar = view.findViewById(R.id.progressBar);
             boolean isLoadingComplete = (attachment.state == Attachment.LoadingState.COMPLETE);
-            progressBar.setVisibility(isLoadingComplete ? View.GONE : View.VISIBLE);
+            if (isLoadingComplete) {
+                if (MimeUtility.isSupportedImageType(attachment.contentType)) {
+                    ImageView attachmentTypeView = view.findViewById(R.id.attachment_type);
+                    attachmentTypeView.setImageResource(R.drawable.ic_attachment_image);
+
+                    ImageView preview = view.findViewById(R.id.attachment_preview);
+                    preview.setVisibility(View.VISIBLE);
+                    Glide.with(MessageCompose.this)
+                            .load(new File(attachment.filename))
+                            .centerCrop()
+                            .diskCacheStrategy(DiskCacheStrategy.NONE)
+                            .into(preview);
+                }
+                progressBar.setVisibility(View.GONE);
+            } else {
+                progressBar.setVisibility(View.VISIBLE);
+            }
         }
 
         @Override
@@ -1775,6 +1805,10 @@ public class MessageCompose extends K9Activity implements OnClickListener,
             View view = attachmentViews.get(attachment.uri);
             attachmentsView.removeView(view);
             attachmentViews.remove(attachment.uri);
+
+            if (attachmentViews.isEmpty()) {
+                attachmentsView.setVisibility(View.GONE);
+            }
         }
 
         @Override

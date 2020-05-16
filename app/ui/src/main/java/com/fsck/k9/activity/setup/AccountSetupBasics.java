@@ -52,6 +52,7 @@ public class AccountSetupBasics extends K9Activity
 
     private final BackendManager backendManager = DI.get(BackendManager.class);
     private final ProvidersXmlDiscovery providersXmlDiscovery = DI.get(ProvidersXmlDiscovery.class);
+    private final AccountCreator accountCreator = DI.get(AccountCreator.class);
 
     private EditText mEmailView;
     private EditText mPasswordView;
@@ -203,6 +204,7 @@ public class AccountSetupBasics extends K9Activity
                 && mEmailValidator.isValidAddressOnly(email);
 
         mNextButton.setEnabled(valid);
+        mNextButton.setFocusable(valid);
         mManualSetupButton.setEnabled(valid);
         /*
          * Dim the next button's icon to 50% if the button is disabled.
@@ -241,7 +243,7 @@ public class AccountSetupBasics extends K9Activity
 
         if (mAccount == null) {
             mAccount = Preferences.getPreferences(this).newAccount();
-            mAccount.setChipColor(AccountCreator.pickColor(this));
+            mAccount.setChipColor(accountCreator.pickColor());
         }
 
         mAccount.setName(getOwnerName());
@@ -255,7 +257,7 @@ public class AccountSetupBasics extends K9Activity
         String transportUri = backendManager.createTransportUri(outgoingServerSettings);
         mAccount.setTransportUri(transportUri);
 
-        mAccount.setDeletePolicy(AccountCreator.getDefaultDeletePolicy(incomingServerSettings.type));
+        mAccount.setDeletePolicy(accountCreator.getDefaultDeletePolicy(incomingServerSettings.type));
 
         // Check incoming here.  Then check outgoing in onActivityResult()
         AccountSetupCheckSettings.actionCheckSettings(this, mAccount, CheckDirection.INCOMING);
@@ -282,6 +284,11 @@ public class AccountSetupBasics extends K9Activity
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode != AccountSetupCheckSettings.ACTIVITY_REQUEST_CODE) {
+            super.onActivityResult(requestCode, resultCode, data);
+            return;
+        }
+
         if (resultCode == RESULT_OK) {
             if (!mCheckedIncoming) {
                 //We've successfully checked incoming.  Now check outgoing.
@@ -315,7 +322,7 @@ public class AccountSetupBasics extends K9Activity
 
         if (mAccount == null) {
             mAccount = Preferences.getPreferences(this).newAccount();
-            mAccount.setChipColor(AccountCreator.pickColor(this));
+            mAccount.setChipColor(accountCreator.pickColor());
         }
         mAccount.setName(getOwnerName());
         mAccount.setEmail(email);

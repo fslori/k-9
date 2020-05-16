@@ -26,14 +26,6 @@
         android:title="@string/action_remote_search"
         android:visible="false"/>
 
-    <!-- MessageList -->
-    <item
-        android:id="@+id/check_mail"
-        android:alphabeticShortcut="r"
-        android:icon="?attr/iconActionRefresh"
-        app:showAsAction="always"
-        android:title="@string/check_mail_action"/>
-
     <!-- MessageView -->
     <item
         android:id="@+id/archive"
@@ -44,7 +36,6 @@
     <!-- MessageView -->
     <item
         android:id="@+id/delete"
-        android:alphabeticShortcut="q"
         android:icon="?attr/iconActionDelete"
         app:showAsAction="always"
         android:title="@string/delete_action"/>
@@ -53,7 +44,6 @@
     <item
         android:id="@+id/toggle_unread"
         android:icon="?attr/iconActionMarkAsUnread"
-        android:alphabeticShortcut="u"
         app:showAsAction="always"
         android:title="@string/mark_as_unread_action"/>
 
@@ -113,6 +103,9 @@
                 android:id="@+id/forward_as_attachment"
                 android:title="@string/forward_as_attachment_action"/>
             <item
+                android:id="@+id/edit_as_new_message"
+                android:title="@string/edit_as_new_message_action"/>
+            <item
                 android:id="@+id/share"
                 android:title="@string/send_alternate_action"/>
         </menu>
@@ -157,7 +150,6 @@
     <!-- always -->
     <item
         android:id="@+id/compose"
-        android:alphabeticShortcut="c"
         android:icon="?attr/iconActionCompose"
         app:showAsAction="ifRoom"
         android:title="@string/compose_action"/>
@@ -209,7 +201,6 @@
     <!-- MessageList -->
     <item
         android:id="@+id/send_messages"
-        android:alphabeticShortcut="r"
         android:icon="?attr/iconActionUpload"
         app:showAsAction="never"
         android:title="@string/send_messages_action"/>
@@ -217,7 +208,6 @@
     <!-- MessageList -->
     <item
         android:id="@+id/empty_trash"
-        android:alphabeticShortcut="e"
         android:title="@string/empty_trash_action"
         app:showAsAction="never" />
 
@@ -232,11 +222,5 @@
         android:id="@+id/toggle_message_view_theme"
         app:showAsAction="never"
         android:title="@string/message_view_theme_action_dark"/>
-    <!-- always -->
-    <item
-        android:id="@+id/settings"
-        android:icon="?attr/iconActionSettings"
-        app:showAsAction="never"
-        android:title="@string/preferences_action" />
 
 </menu>

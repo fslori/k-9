@@ -11,10 +11,10 @@ import com.fsck.k9.ui.ThemeManager
 import java.util.concurrent.ExecutorService
 
 class GeneralSettingsDataStore(
-        private val preferences: Preferences,
-        private val jobManager: K9JobManager,
-        private val executorService: ExecutorService,
-        private val themeManager: ThemeManager
+    private val preferences: Preferences,
+    private val jobManager: K9JobManager,
+    private val executorService: ExecutorService,
+    private val themeManager: ThemeManager
 ) : PreferenceDataStore() {
     var activity: FragmentActivity? = null
 
@@ -22,10 +22,7 @@ class GeneralSettingsDataStore(
         return when (key) {
             "fixed_message_view_theme" -> K9.isFixedMessageViewTheme
             "animations" -> K9.isShowAnimations
-            "measure_accounts" -> K9.isMeasureAccounts
-            "count_search" -> K9.isCountSearchMessages
             "hide_special_accounts" -> K9.isHideSpecialAccounts
-            "folderlist_wrap_folder_name" -> K9.isWrapFolderNames
             "messagelist_stars" -> K9.isShowMessageListStars
             "messagelist_show_correspondent_names" -> K9.isShowCorrespondentNames
             "messagelist_sender_above_subject" -> K9.isMessageListSenderAboveSubject
@@ -37,8 +34,6 @@ class GeneralSettingsDataStore(
             "threaded_view" -> K9.isThreadedViewEnabled
             "messageview_fixedwidth_font" -> K9.isUseMessageViewFixedWidthFont
             "messageview_autofit_width" -> K9.isAutoFitWidth
-            "start_integrated_inbox" -> K9.isStartInUnifiedInbox
-            "gestures" -> K9.isGesturesEnabled
             "messageview_return_to_list" -> K9.isMessageViewReturnToList
             "messageview_show_next" -> K9.isMessageViewShowNext
             "quiet_time_enabled" -> K9.isQuietTimeEnabled
@@ -55,10 +50,7 @@ class GeneralSettingsDataStore(
         when (key) {
             "fixed_message_view_theme" -> K9.isFixedMessageViewTheme = value
             "animations" -> K9.isShowAnimations = value
-            "measure_accounts" -> K9.isMeasureAccounts = value
-            "count_search" -> K9.isCountSearchMessages = value
             "hide_special_accounts" -> K9.isHideSpecialAccounts = value
-            "folderlist_wrap_folder_name" -> K9.isWrapFolderNames = value
             "messagelist_stars" -> K9.isShowMessageListStars = value
             "messagelist_show_correspondent_names" -> K9.isShowCorrespondentNames = value
             "messagelist_sender_above_subject" -> K9.isMessageListSenderAboveSubject = value
@@ -70,8 +62,6 @@ class GeneralSettingsDataStore(
             "threaded_view" -> K9.isThreadedViewEnabled = value
             "messageview_fixedwidth_font" -> K9.isUseMessageViewFixedWidthFont = value
             "messageview_autofit_width" -> K9.isAutoFitWidth = value
-            "start_integrated_inbox" -> K9.isStartInUnifiedInbox = value
-            "gestures" -> K9.isGesturesEnabled = value
             "messageview_return_to_list" -> K9.isMessageViewReturnToList = value
             "messageview_show_next" -> K9.isMessageViewShowNext = value
             "quiet_time_enabled" -> K9.isQuietTimeEnabled = value
@@ -89,6 +79,7 @@ class GeneralSettingsDataStore(
     override fun getInt(key: String?, defValue: Int): Int {
         return when (key) {
             "messagelist_contact_name_color" -> K9.contactNameColor
+            "message_view_content_font_slider" -> K9.fontSizes.messageViewContentAsPercent
             else -> defValue
         }
     }
@@ -96,6 +87,7 @@ class GeneralSettingsDataStore(
     override fun putInt(key: String?, value: Int) {
         when (key) {
             "messagelist_contact_name_color" -> K9.contactNameColor = value
+            "message_view_content_font_slider" -> K9.fontSizes.messageViewContentAsPercent = value
             else -> return
         }
 
@@ -116,6 +108,22 @@ class GeneralSettingsDataStore(
             "notification_hide_subject" -> K9.notificationHideSubject.name
             "quiet_time_starts" -> K9.quietTimeStarts
             "quiet_time_ends" -> K9.quietTimeEnds
+            "account_name_font" -> K9.fontSizes.accountName.toString()
+            "account_description_font" -> K9.fontSizes.accountDescription.toString()
+            "folder_name_font" -> K9.fontSizes.folderName.toString()
+            "folder_status_font" -> K9.fontSizes.folderStatus.toString()
+            "message_list_subject_font" -> K9.fontSizes.messageListSubject.toString()
+            "message_list_sender_font" -> K9.fontSizes.messageListSender.toString()
+            "message_list_date_font" -> K9.fontSizes.messageListDate.toString()
+            "message_list_preview_font" -> K9.fontSizes.messageListPreview.toString()
+            "message_view_sender_font" -> K9.fontSizes.messageViewSender.toString()
+            "message_view_to_font" -> K9.fontSizes.messageViewTo.toString()
+            "message_view_cc_font" -> K9.fontSizes.messageViewCC.toString()
+            "message_view_bcc_font" -> K9.fontSizes.messageViewBCC.toString()
+            "message_view_subject_font" -> K9.fontSizes.messageViewSubject.toString()
+            "message_view_date_font" -> K9.fontSizes.messageViewDate.toString()
+            "message_view_additional_headers_font" -> K9.fontSizes.messageViewAdditionalHeaders.toString()
+            "message_compose_input_font" -> K9.fontSizes.messageComposeInput.toString()
             else -> defValue
         }
     }
@@ -140,6 +148,22 @@ class GeneralSettingsDataStore(
             "notification_hide_subject" -> K9.notificationHideSubject = K9.NotificationHideSubject.valueOf(value)
             "quiet_time_starts" -> K9.quietTimeStarts = value
             "quiet_time_ends" -> K9.quietTimeEnds = value
+            "account_name_font" -> K9.fontSizes.accountName = value.toInt()
+            "account_description_font" -> K9.fontSizes.accountDescription = value.toInt()
+            "folder_name_font" -> K9.fontSizes.folderName = value.toInt()
+            "folder_status_font" -> K9.fontSizes.folderStatus = value.toInt()
+            "message_list_subject_font" -> K9.fontSizes.messageListSubject = value.toInt()
+            "message_list_sender_font" -> K9.fontSizes.messageListSender = value.toInt()
+            "message_list_date_font" -> K9.fontSizes.messageListDate = value.toInt()
+            "message_list_preview_font" -> K9.fontSizes.messageListPreview = value.toInt()
+            "message_view_sender_font" -> K9.fontSizes.messageViewSender = value.toInt()
+            "message_view_to_font" -> K9.fontSizes.messageViewTo = value.toInt()
+            "message_view_cc_font" -> K9.fontSizes.messageViewCC = value.toInt()
+            "message_view_bcc_font" -> K9.fontSizes.messageViewBCC = value.toInt()
+            "message_view_subject_font" -> K9.fontSizes.messageViewSubject = value.toInt()
+            "message_view_date_font" -> K9.fontSizes.messageViewDate = value.toInt()
+            "message_view_additional_headers_font" -> K9.fontSizes.messageViewAdditionalHeaders = value.toInt()
+            "message_compose_input_font" -> K9.fontSizes.messageComposeInput = value.toInt()
             else -> return
         }
 
@@ -217,7 +241,6 @@ class GeneralSettingsDataStore(
     private fun setTheme(value: String?) {
         K9.appTheme = stringToAppTheme(value)
         themeManager.updateAppTheme()
-        recreateActivity()
     }
 
     private fun setLanguage(language: String) {

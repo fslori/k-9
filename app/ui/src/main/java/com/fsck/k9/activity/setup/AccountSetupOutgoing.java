@@ -54,6 +54,7 @@ public class AccountSetupOutgoing extends K9Activity implements OnClickListener,
 
 
     private final BackendManager backendManager = DI.get(BackendManager.class);
+    private final AccountCreator accountCreator = DI.get(AccountCreator.class);
 
     private EditText mUsernameView;
     private EditText mPasswordView;
@@ -79,10 +80,6 @@ public class AccountSetupOutgoing extends K9Activity implements OnClickListener,
         i.putExtra(EXTRA_ACCOUNT, account.getUuid());
         i.putExtra(EXTRA_MAKE_DEFAULT, makeDefault);
         context.startActivity(i);
-    }
-
-    public static void actionEditOutgoingSettings(Context context, Account account) {
-        context.startActivity(intentActionEditOutgoingSettings(context, account));
     }
 
     public static Intent intentActionEditOutgoingSettings(Context context, Account account) {
@@ -448,7 +445,7 @@ public class AccountSetupOutgoing extends K9Activity implements OnClickListener,
         // Remove listener so as not to trigger validateFields() which is called
         // elsewhere as a result of user interaction.
         mPortView.removeTextChangedListener(validationTextWatcher);
-        mPortView.setText(String.valueOf(AccountCreator.getDefaultPort(securityType, Protocols.SMTP)));
+        mPortView.setText(String.valueOf(accountCreator.getDefaultPort(securityType, Protocols.SMTP)));
         mPortView.addTextChangedListener(validationTextWatcher);
     }
 
@@ -458,6 +455,11 @@ public class AccountSetupOutgoing extends K9Activity implements OnClickListener,
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode != AccountSetupCheckSettings.ACTIVITY_REQUEST_CODE) {
+            super.onActivityResult(requestCode, resultCode, data);
+            return;
+        }
+
         if (resultCode == RESULT_OK) {
             if (Intent.ACTION_EDIT.equals(getIntent().getAction())) {
                 Preferences.getPreferences(getApplicationContext()).saveAccount(mAccount);
